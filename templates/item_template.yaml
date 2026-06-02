@@ -1,0 +1,55 @@
+# SuperOutfit 衣物模板
+# 复制此文件并重命名为 item_NNN.yaml，然后填写信息
+
+id: item_000                      # 唯一 ID，格式 item_NNN
+type: ""                          # 上衣 | 裤子 | 外套 | 鞋子 | 配饰
+sub_type: ""                      # T恤 | 衬衫 | 牛仔裤 | 西装裤 | 运动鞋 | ...
+
+# 外观
+colors:
+  primary: ""                     # 主色（必须填）
+  secondary: ""                   # 副色/花纹（可选）
+  pattern: "纯色"                 # 纯色 | 条纹 | 格子 | 印花 | 扎染
+
+material: ""                      # 纯棉 | 涤纶 | 羊毛 | 真丝 | 牛仔 | 皮革 | ...
+fit: "常规"                       # 紧身 | 修身 | 常规 | 宽松 | oversize
+
+# 尺寸
+size: ""                          # S | M | L | XL | ...
+brand: ""                         # 品牌
+price: 0                          # 购买价格（元）
+purchase_date: ""                 # 购买日期 YYYY-MM-DD
+
+# 状态
+condition: "完好"                 # 完好 | 轻微磨损 | 需修补 | 待处理
+wear_count: 0                     # 穿着次数
+last_worn: ""                     # 最后穿着日期 YYYY-MM-DD
+
+# 搭配属性
+style: []                         # 风格标签：通勤/简约/轻熟/运动/街头/...
+season: []                        # 适合季节：春/夏/秋/冬
+temperature_range: "0~40"         # 适穿温度范围（℃）
+occasion: []                      # 适合场合：办公/日常/约会/运动/...
+layer: "可单穿"                   # 内层 | 中间层 | 外层 | 可单穿
+
+# 详细规格
+neckline: ""                      # 领型
+sleeve: ""                        # 袖长：短袖/长袖/无袖
+length: ""                        # 衣长/裤长
+closure: ""                       # 闭合方式：纽扣/拉链/套头/系带
+
+# 搭配规则
+pair_with:                        # 推荐搭配（参考用）
+  - type: ""
+    sub_type: ""
+    color: ""
+
+restrict:                         # 搭配禁忌
+  - ""
+
+# 标记
+favorite: false
+tags: []                          # 自定义标签
+
+# 图片（文件名，实际图片放在 ../images/ 目录）
+image: ""                         # 如 item_001.jpg

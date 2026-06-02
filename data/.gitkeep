@@ -1,0 +1,10 @@
+# SuperOutfit 数据目录
+# 此目录存放用户个人数据，请勿提交到 Git
+
+# 以下是空目录占位文件，实际数据由 setup.py 初始化
+
+items/          # 衣物详情 YAML
+outfits/        # 搭配方案
+images/         # 衣物图片
+outfit_images/  # 搭配效果图
+archive/        # 已淘汰衣物

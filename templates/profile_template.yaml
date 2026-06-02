@@ -1,0 +1,71 @@
+# SuperOutfit 用户画像
+# 请根据你的真实信息填写，AI 会基于此推荐穿搭
+
+user_id: user_001
+name: ""                          # 你的名字
+gender: male                      # male | female | other
+age_range: "20-25"                # 年龄段
+
+# 身材信息（用于推荐合身的衣物）
+body:
+  height: 178                     # cm
+  weight: 60                      # kg
+  build: slim                     # slim | standard | athletic | heavy
+  shoulder: regular               # narrow | regular | broad
+  skin_tone: warm                 # cool | neutral | warm（肤色冷暖）
+
+# 风格偏好
+style:
+  primary:                        # 主要风格（日常最常穿的）
+    - 简约
+    - 通勤
+  secondary:                      # 次要风格（偶尔尝试的）
+    - 轻熟
+  avoid:                          # 不喜欢的风格
+    - 花哨
+    - oversize
+
+# 颜色偏好
+colors:
+  love:                           # 喜欢的颜色（优先推荐）
+    - 白
+    - 黑
+    - 藏青
+    - 灰
+  neutral:                        # 可以接受的颜色
+    - 蓝
+    - 棕
+    - 卡其
+  avoid:                          # 不喜欢的颜色
+    - 荧光绿
+    - 粉红
+
+# 预算区间（元）
+budget:
+  top: 300                        # 上衣
+  bottom: 300                     # 下装
+  outerwear: 800                  # 外套
+  shoes: 500                      # 鞋子
+  accessories: 200                # 配饰
+
+# 生活方式
+lifestyle:
+  occupation: 软件工程师
+  work_dress_code: smart_casual   # casual | smart_casual | business | formal
+  commute: 地铁                   # 步行 | 骑车 | 地铁 | 开车
+  weekend:
+    - 咖啡
+    - 看展
+    - 跑步
+
+# 身体尺寸（可选，用于后期虚拟试穿）
+measurements:
+  chest: 0                        # 胸围 cm
+  waist: 0                        # 腰围 cm
+  hip: 0                          # 臀围 cm
+  inseam: 0                       # 内缝长 cm
+
+location: ""                      # 所在城市（用于天气查询）
+timezone: Asia/Shanghai
+created_at: "2026-06-02"
+updated_at: "2026-06-02"
