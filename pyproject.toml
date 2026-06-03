@@ -1,0 +1,17 @@
+[project]
+name = "superoutfit"
+version = "2.0.0"
+description = "AI穿搭推荐系统"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+    "matplotlib>=3.9",
+]
