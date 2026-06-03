@@ -53,10 +53,40 @@ function handleSaveProfile(data) {
 }
 
 function applyTheme(theme) {
-  document.documentElement.style.setProperty('--user-accent', theme.accent)
-  document.documentElement.style.setProperty('--user-surface', theme.surface)
-  document.documentElement.style.setProperty('--user-dark', theme.dark)
-  document.documentElement.style.setProperty('--user-muted', theme.muted)
+  const root = document.documentElement.style
+  
+  // 核心 4 色
+  root.setProperty('--user-accent', theme.accent)
+  root.setProperty('--canvas', theme.canvas)
+  root.setProperty('--dark', theme.dark)
+  root.setProperty('--user-muted', theme.muted)
+  
+  // 派生：深色系（基于 dark）
+  root.setProperty('--surface-dark', theme.dark)
+  root.setProperty('--surface-dark-elevated', theme.darkElevated)
+  root.setProperty('--surface-dark-soft', theme.darkSoft)
+  
+  // 派生：浅色系（基于 canvas）
+  root.setProperty('--surface-soft', theme.surfaceSoft)
+  root.setProperty('--surface-card', theme.surface)
+  root.setProperty('--surface-cream-strong', theme.creamStrong)
+  root.setProperty('--hairline', theme.hairline)
+  root.setProperty('--hairline-soft', theme.hairlineSoft)
+  
+  // 派生：文字色（确保对比度）
+  root.setProperty('--ink', theme.ink)
+  root.setProperty('--body', theme.body)
+  root.setProperty('--body-strong', theme.bodyStrong)
+  root.setProperty('--muted', theme.muted)
+  root.setProperty('--muted-soft', theme.mutedSoft)
+  
+  // 派生：交互色
+  root.setProperty('--primary', theme.accent)
+  root.setProperty('--primary-active', theme.accentActive)
+  root.setProperty('--primary-disabled', theme.accentDisabled)
+  root.setProperty('--on-primary', theme.onPrimary)
+  root.setProperty('--on-dark', theme.onDark)
+  root.setProperty('--on-dark-soft', theme.onDarkSoft)
 }
 
 onMounted(loadAll)
