@@ -43,11 +43,8 @@ function getDisplayName(filename) {
 <template>
   <div>
     <div class="refs-grid">
-      <div v-for="(r, i) in refs" :key="r.filename" class="ref-card" :style="{ animationDelay: i * 0.05 + 's' }" @click="openModal(r)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <h3>{{ getDisplayName(r.filename) }}</h3>
-          <button class="btn btn-danger btn-sm" @click="handleDelete(r.filename, $event)">删除</button>
-        </div>
+      <div v-for="r in refs" :key="r.filename" class="ref-card" @click="openModal(r)">
+        <h3>{{ getDisplayName(r.filename) }}</h3>
         <div style="margin-top:var(--space-sm);font-size:14px;color:var(--muted);line-height:1.6">
           {{ r.content.substring(0, 100) }}{{ r.content.length > 100 ? '...' : '' }}
         </div>

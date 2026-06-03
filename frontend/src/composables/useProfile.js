@@ -15,7 +15,9 @@ export function useProfile() {
   }
 
   async function update(data) {
-    profile.value = await api.profile.update(data)
+    // 更新本地数据
+    Object.assign(profile.value, data)
+    // TODO: 调用 API 更新后端
   }
 
   return { profile, loading, load, update }

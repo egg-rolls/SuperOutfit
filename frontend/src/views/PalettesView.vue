@@ -6,7 +6,7 @@ defineProps({
 
 <template>
   <div class="palette-grid">
-    <div v-for="(p, i) in palettes" :key="i" class="palette-card" :style="{ animationDelay: i * 0.03 + 's' }">
+    <div v-for="(p, i) in palettes" :key="i" class="palette-card">
       <div class="palette-swatches">
         <div v-for="c in p.colors" :key="c" class="swatch" :style="{ background: c }" :title="c"></div>
       </div>

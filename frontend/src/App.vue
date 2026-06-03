@@ -14,8 +14,8 @@ import RecommendView from './views/RecommendView.vue'
 
 const activeTab = ref('wardrobe')
 
-const { items, stats, loading: wardrobeLoading, load: loadWardrobe, getImgUrl, getColor, getTypes, getStyles, filterItems } = useWardrobe()
-const { profile, load: loadProfile } = useProfile()
+const { items, stats, loading: wardrobeLoading, load: loadWardrobe, getImgUrl, getColor, getTypes, getStyles, filterItems, update: updateWardrobeItem } = useWardrobe()
+const { profile, load: loadProfile, update: updateProfile } = useProfile()
 const { palettes, load: loadPalettes } = usePalettes()
 const { refs, load: loadRefs, update: updateRef, remove: removeRef } = useRefs()
 
@@ -44,6 +44,14 @@ function handleSaveRef(filename, content) {
   updateRef(filename, content)
 }
 
+function handleUpdateItem(itemData) {
+  updateWardrobeItem(itemData.id, itemData)
+}
+
+function handleSaveProfile(data) {
+  updateProfile(data)
+}
+
 onMounted(loadAll)
 </script>
 
@@ -61,6 +69,7 @@ onMounted(loadAll)
       :getTypes="getTypes"
       :getStyles="getStyles"
       :filterItems="filterItems"
+      :updateItem="handleUpdateItem"
     />
     
     <RecommendView
@@ -85,6 +94,7 @@ onMounted(loadAll)
     <ProfileView
       v-show="activeTab === 'profile'"
       :profile="profile"
+      @save="handleSaveProfile"
     />
   </div>
 </template>
@@ -794,6 +804,14 @@ a:hover { text-decoration: underline; }
   transition: all 0.15s ease;
   line-height: 1.4;
   white-space: nowrap;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 .btn-sm {

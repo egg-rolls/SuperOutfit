@@ -27,6 +27,15 @@ export function useWardrobe() {
     }
   }
 
+  async function update(id, data) {
+    // 更新本地数据
+    const idx = items.value.findIndex(i => i.id === id)
+    if (idx >= 0) {
+      Object.assign(items.value[idx], data)
+    }
+    // TODO: 调用 API 更新后端
+  }
+
   async function remove(id) {
     await api.wardrobe.delete(id)
     items.value = items.value.filter(i => i.id !== id)
@@ -56,5 +65,5 @@ export function useWardrobe() {
     return items.value
   }
 
-  return { items, stats, loading, load, remove, getImgUrl, getColor, getTypes, getStyles, filterItems }
+  return { items, stats, loading, load, update, remove, getImgUrl, getColor, getTypes, getStyles, filterItems }
 }

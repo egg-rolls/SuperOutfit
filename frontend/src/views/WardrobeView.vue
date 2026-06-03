@@ -9,18 +9,31 @@ const props = defineProps({
   getColor: Function,
   getTypes: Function,
   getStyles: Function,
-  filterItems: Function
+  filterItems: Function,
+  updateItem: Function
 })
 
 const filter = ref('all')
 const modalItem = ref(null)
 
 function openModal(item) {
-  modalItem.value = item
+  modalItem.value = { ...item }
 }
 
 function closeModal() {
   modalItem.value = null
+}
+
+function handleSave(itemData) {
+  if (props.updateItem) {
+    props.updateItem(itemData)
+  }
+  // 更新本地数据
+  const idx = props.items.findIndex(i => i.id === itemData.id)
+  if (idx >= 0) {
+    Object.assign(props.items[idx], itemData)
+  }
+  closeModal()
 }
 </script>
 
@@ -33,12 +46,11 @@ function closeModal() {
     </div>
     <div class="grid">
       <WardrobeCard
-        v-for="(item, i) in filterItems(filter)"
+        v-for="item in filterItems(filter)"
         :key="item.id"
         :item="item"
         :imgUrl="getImgUrl(item)"
         :color="getColor(item)"
-        :style="{ animationDelay: i * 0.05 + 's' }"
         @click="openModal"
       />
       <div v-if="!filterItems(filter).length" class="empty">
@@ -50,6 +62,12 @@ function closeModal() {
         衣橱为空
       </div>
     </div>
-    <ItemModal v-if="modalItem" :item="modalItem" :imgUrl="getImgUrl(modalItem)" @close="closeModal" />
+    <ItemModal 
+      v-if="modalItem" 
+      :item="modalItem" 
+      :imgUrl="getImgUrl(modalItem)" 
+      @close="closeModal"
+      @save="handleSave"
+    />
   </div>
 </template>
