@@ -150,6 +150,36 @@ onMounted(loadAll)
   --space-section: 96px;
 }
 
+/* ===== Scrollbar Hidden ===== */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== Animations ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 /* ===== Reset & Base ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -315,11 +345,13 @@ a:hover { text-decoration: underline; }
   overflow: hidden;
   transition: all 0.2s ease;
   cursor: pointer;
+  animation: fadeIn 0.3s ease forwards;
 }
 
 .card:hover {
   border-color: var(--hairline);
   box-shadow: 0 2px 8px rgba(20, 20, 19, 0.06);
+  transform: translateY(-2px);
 }
 
 .card-img {
@@ -411,6 +443,7 @@ a:hover { text-decoration: underline; }
 
 .modal-overlay.show {
   display: flex;
+  animation: fadeIn 0.2s ease forwards;
 }
 
 .modal {
@@ -421,6 +454,7 @@ a:hover { text-decoration: underline; }
   max-height: 85vh;
   overflow-y: auto;
   position: relative;
+  animation: scaleIn 0.2s ease forwards;
 }
 
 .modal-img {
@@ -567,10 +601,12 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: all 0.2s ease;
+  animation: fadeIn 0.3s ease forwards;
 }
 
 .palette-card:hover {
   border-color: var(--hairline);
+  transform: translateY(-2px);
 }
 
 .palette-swatches {
@@ -622,11 +658,13 @@ a:hover { text-decoration: underline; }
   padding: var(--space-lg);
   transition: all 0.2s ease;
   cursor: pointer;
+  animation: fadeIn 0.3s ease forwards;
 }
 
 .ref-card:hover {
   border-color: var(--hairline);
   box-shadow: 0 2px 8px rgba(20, 20, 19, 0.06);
+  transform: translateY(-2px);
 }
 
 .ref-card h3 {
@@ -747,29 +785,37 @@ a:hover { text-decoration: underline; }
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  border: none;
+  padding: 8px 16px;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-  line-height: 1;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 .btn-primary {
   background: var(--primary);
   color: var(--on-primary);
+  border-color: var(--primary);
 }
 
 .btn-primary:hover {
   background: var(--primary-active);
+  border-color: var(--primary-active);
 }
 
 .btn-secondary {
   background: var(--canvas);
   color: var(--ink);
-  border: 1px solid var(--hairline);
+  border-color: var(--hairline);
 }
 
 .btn-secondary:hover {
@@ -780,7 +826,7 @@ a:hover { text-decoration: underline; }
 .btn-danger {
   background: transparent;
   color: var(--error);
-  border: 1px solid var(--error);
+  border-color: var(--error);
 }
 
 .btn-danger:hover {
@@ -791,6 +837,7 @@ a:hover { text-decoration: underline; }
 .btn-ghost {
   background: transparent;
   color: var(--muted);
+  border-color: transparent;
 }
 
 .btn-ghost:hover {

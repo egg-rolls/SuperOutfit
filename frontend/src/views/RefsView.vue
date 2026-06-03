@@ -26,7 +26,7 @@ function handleSave(filename, content) {
 }
 
 function handleDelete(filename, event) {
-  event.stopPropagation()
+  if (event && event.stopPropagation) event.stopPropagation()
   if (confirm(`确定要删除 ${filename} 吗？此操作不可恢复。`)) {
     emit('delete', filename)
     if (modalRef.value && modalRef.value.filename === filename) {
@@ -43,10 +43,10 @@ function getDisplayName(filename) {
 <template>
   <div>
     <div class="refs-grid">
-      <div v-for="r in refs" :key="r.filename" class="ref-card" @click="openModal(r)">
+      <div v-for="(r, i) in refs" :key="r.filename" class="ref-card" :style="{ animationDelay: i * 0.05 + 's' }" @click="openModal(r)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <h3>{{ getDisplayName(r.filename) }}</h3>
-          <button class="btn btn-danger" style="padding:4px 8px;font-size:12px" @click="handleDelete(r.filename, $event)">删除</button>
+          <button class="btn btn-danger btn-sm" @click="handleDelete(r.filename, $event)">删除</button>
         </div>
         <div style="margin-top:var(--space-sm);font-size:14px;color:var(--muted);line-height:1.6">
           {{ r.content.substring(0, 100) }}{{ r.content.length > 100 ? '...' : '' }}

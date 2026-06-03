@@ -33,11 +33,12 @@ function closeModal() {
     </div>
     <div class="grid">
       <WardrobeCard
-        v-for="item in filterItems(filter)"
+        v-for="(item, i) in filterItems(filter)"
         :key="item.id"
         :item="item"
         :imgUrl="getImgUrl(item)"
         :color="getColor(item)"
+        :style="{ animationDelay: i * 0.05 + 's' }"
         @click="openModal"
       />
       <div v-if="!filterItems(filter).length" class="empty">
