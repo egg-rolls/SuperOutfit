@@ -63,16 +63,40 @@ python D:\Application\SuperOutfit\server.py
 }
 ```
 
-### 非 MCP 模式（直接调用脚本）
+### 非 MCP 模式（CLI 命令）
 
-如果 MCP 不可用，可直接调用应用目录的脚本：
+如果 MCP 不可用，可使用统一的 CLI 命令：
 
 ```bash
-python D:\Application\SuperOutfit\scripts\wardrobe_ops.py list --json
-python D:\Application\SuperOutfit\scripts\weather.py --city "大连"
-python D:\Application\SuperOutfit\scripts\scorer.py --items item_001,item_003 --temp 22
-python D:\Application\SuperOutfit\scripts\color_math.py --items item_001,item_003
+# 衣橱管理
+superoutfit wardrobe list --json
+superoutfit wardrobe add --type "上衣" --sub-type "T恤" --primary-color "黑色"
+superoutfit wardrobe show item_001
+superoutfit wardrobe stats
+
+# 天气查询
+superoutfit weather --city "大连"
+
+# 搭配评分
+superoutfit score --items item_001,item_003 --occasion 通勤 --temp 22
+
+# 色彩协调度
+superoutfit color --items item_001,item_003
+superoutfit color --colors "#F5F0E8,#C4A97D,#111111"
+
+# 色卡管理
+superoutfit palette list --top 10
+superoutfit palette train
+
+# 知识库
+superoutfit knowledge list
+superoutfit knowledge show color.md
+
+# 配置
+superoutfit config
 ```
+
+> 完整命令参考见 `D:\Application\SuperOutfit\CLI.md`
 
 ## 核心工作流
 
