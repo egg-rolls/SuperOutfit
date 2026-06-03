@@ -1,12 +1,13 @@
 [project]
 name = "superoutfit"
-version = "2.0.0"
-description = "AI穿搭推荐系统"
+version = "3.0.0"
+description = "AI 智能穿搭顾问 — MCP + CLI"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.34",
     "pyyaml>=6.0",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
@@ -15,3 +16,6 @@ ml = [
     "scikit-learn>=1.5",
     "matplotlib>=3.9",
 ]
+
+[project.scripts]
+superoutfit = "superoutfit:main"
