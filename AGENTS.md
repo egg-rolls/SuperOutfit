@@ -6,9 +6,10 @@
 
 SuperOutfit 是一个 AI 智能穿搭顾问系统，支持三种入口：
 
-1. **MCP Server** — 通过 stdio 协议与 AI Agent 交互（12 个工具）
-2. **FastAPI 后端** — REST API，支持前端调用（端口 8001）
-3. **Vue 前端** — Web 界面，Claude 设计风格（端口 5173）
+1. **CLI 命令行** — 统一的 `superoutfit` 命令（推荐）
+2. **MCP Server** — 通过 stdio 协议与 AI Agent 交互（12 个工具）
+3. **FastAPI 后端** — REST API，支持前端调用（端口 8001）
+4. **Vue 前端** — Web 界面，Claude 设计风格（端口 5173）
 
 核心能力：
 - **衣物管理** — YAML 文件存储，用户可直接在资源管理器浏览编辑
@@ -97,6 +98,9 @@ D:\Application\SuperOutfit\
 ┌─────────────────────────────────────────────────────────────┐
 │                       SuperOutfit                           │
 ├─────────────────────────────────────────────────────────────┤
+│  CLI (superoutfit.py)                                       │
+│  └─ 统一命令入口：wardrobe/weather/score/color/palette/...   │
+├─────────────────────────────────────────────────────────────┤
 │  MCP Server (server.py)                                     │
 │  └─ 12 个工具（天气/衣橱/推荐/评分/色彩）                      │
 ├─────────────────────────────────────────────────────────────┤
@@ -117,6 +121,10 @@ D:\Application\SuperOutfit\
 ### 启动命令
 
 ```bash
+# CLI（推荐）
+superoutfit wardrobe list
+superoutfit score --items item_001,item_003 --occasion 通勤
+
 # 后端（端口 8001）
 uv run uvicorn api.main:app --host 0.0.0.0 --port 8001 --reload
 
