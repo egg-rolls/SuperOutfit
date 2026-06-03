@@ -52,6 +52,13 @@ function handleSaveProfile(data) {
   updateProfile(data)
 }
 
+function applyTheme(theme) {
+  document.documentElement.style.setProperty('--user-accent', theme.accent)
+  document.documentElement.style.setProperty('--user-surface', theme.surface)
+  document.documentElement.style.setProperty('--user-dark', theme.dark)
+  document.documentElement.style.setProperty('--user-muted', theme.muted)
+}
+
 onMounted(loadAll)
 </script>
 
@@ -82,6 +89,7 @@ onMounted(loadAll)
     <PalettesView
       v-show="activeTab === 'palettes'"
       :palettes="palettes"
+      @applyTheme="applyTheme"
     />
     
     <RefsView
