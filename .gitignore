@@ -9,6 +9,16 @@ data/history.yaml
 data/preferences.yaml
 data/wardrobe_index.yaml
 
+# 模型文件（太大，可通过脚本重训）
+data/color_model.pkl
+data/color_model_gp.pkl
+data/like_transfer_model.pkl
+data/feature_stats.json
+
+# 色卡数据（可通过爬虫获取）
+data/raw_palettes.json
+data/scored_palettes.json
+
 # 构建产物
 ui/outfit.html
 *.zip

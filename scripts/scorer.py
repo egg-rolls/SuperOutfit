@@ -9,6 +9,7 @@ SuperOutfit 搭配评分工具
 import argparse
 import json
 import os
+import subprocess
 import sys
 import yaml
 from pathlib import Path
@@ -62,30 +63,38 @@ def load_profile():
 # ==================== 评分维度 ====================
 
 def color_score(items):
-    """颜色协调性评分 (0-100)"""
+    """颜色协调性评分 (0-100) — 基于 HSL 数学模型"""
+    try:
+        import subprocess
+        skill_dir = Path(__file__).resolve().parent.parent
+        item_ids = [item.get("id", "") for item in items]
+        cmd = [
+            sys.executable or "python",
+            str(skill_dir / "scripts" / "color_math.py"),
+            "--items", ",".join(item_ids),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            return data.get("harmony_score", 70)
+    except Exception:
+        pass
+    # 降级到简单规则
     colors = set()
     for item in items:
         primary = item.get("colors", {}).get("primary", "")
         if primary:
             colors.add(primary)
-    
     if not colors:
         return 50
-    
-    # 全是安全色 = 高分
     if colors.issubset(SAFE_COLORS):
         return 90
-    
-    # 检查冲突
     for conflict in COLOR_CONFLICTS:
         if conflict.issubset(colors):
             return 20
-    
-    # 包含非安全色但不冲突
     non_safe = colors - SAFE_COLORS
     if len(non_safe) <= 1:
         return 70
-    
     return 50
 
 def style_score(items):

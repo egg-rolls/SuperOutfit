@@ -1,6 +1,6 @@
 # 🧥 SuperOutfit
 
-**AI 智能穿搭顾问** — 基于 YAML 文件的个人衣橱管理与穿搭推荐系统。
+**AI 智能穿搭顾问** — 基于 5462 组真实色卡 + 高斯过程数学模型的穿搭推荐系统。
 
 数据是 YAML，图片在文件夹，打开资源管理器就能看。不锁死在数据库里，不依赖任何云服务。
 
@@ -8,15 +8,49 @@
 
 ---
 
-## ✨ 特性
+## ✨ 核心能力
 
-- **YAML 原生** — 每件衣物一个文件，可直接编辑，版本控制友好
-- **图片可见** — 拖拽到 `data/images/` 即可，资源管理器里一目了然
-- **AI 推荐** — 基于天气、场合、风格偏好自动搭配，不穷举组合
-- **搭配评分** — 6 维度打分（颜色/风格/场合/天气/新鲜度/偏好）
-- **可视化 UI** — 单文件 HTML，浏览器打开即用，衣橱卡片 + 推荐方案
-- **多工具兼容** — Hermes / Claude Code / OpenCode / Cursor 都能用
-- **零外部依赖** — 只需 Python + PyYAML，天气用免费 API
+### 🎨 色彩评分引擎
+
+基于 **5462 组真实人类审美色卡**训练的高斯过程模型，不是拍脑袋的规则，是人类用点赞投票出来的审美共识。
+
+```
+评分等级（基于人类审美分布）：
+
+  SSS ≥ 85   顶级     名画级配色，人类审美共识的前 8%
+  SS  ≥ 75   优秀     专业搭配师水准
+  S   ≥ 65   出色     有明确审美风格
+  A   ≥ 50   良好     和谐不出错
+  B   ≥ 35   一般     中规中矩
+  C   ≥ 20   偏弱     需要调整
+  D   < 20   差       明显不搭
+```
+
+**数据来源：** Color Hunt + 色采（名画/故宫/摄影配色）+ LOL Colors + Design Seeds + Colormind
+
+**技术栈：** 42 维特征（HSL + OKLab）→ 点赞迁移 → 稀疏高斯过程（500 诱导点）
+
+### 🧥 衣橱管理
+
+每件衣物一个 YAML 文件 + 一张图片。你可以：
+- 在资源管理器里直接浏览、编辑、拖拽图片
+- 用 AI 语音/文字添加衣物（支持图片识别）
+- 按类型/风格/季节/场合筛选
+- 自动统计穿着频率
+
+### ✨ 穿搭推荐
+
+AI 基于天气 + 衣橱 + 用户画像推荐搭配，不是穷举组合，是真正的智能推荐。
+
+### 📚 穿搭知识库
+
+12 篇穿搭领域知识，从 5 个优质视频中提炼：
+- 色彩搭配（万能色 / 4 种配色模型 / 底色理论）
+- 版型身材（上衣 4 版型 / 裤子 4 版型 / 身材解决方案）
+- 叠穿层次（三角区理论 / 3 个叠穿公式）
+- 场合穿搭（面试 / 通勤 / 相亲 / 婚礼 / 商务）
+- 风格体系（7 种风格 / 适合身材 / 搜索关键词）
+- 配饰 / 鞋子 / 购买决策 / 常见雷区 / 衣物养护
 
 ---
 
@@ -30,56 +64,109 @@ cd superoutfit
 # 2. 初始化数据目录
 python setup.py
 
-# 3. 编辑个人画像
+# 3. 爬取色卡 + 训练色彩模型（首次需要，约 1 分钟）
+python scripts/scrape_palettes.py
+python scripts/scrape_wxsecai.py
+python scripts/like_based_scoring.py
+
+# 4. 编辑个人画像
 #    打开 data/profile.yaml，填写身材、风格偏好、预算
 
 # 4. 添加衣物
 python scripts/wardrobe_ops.py add \
   --type "上衣" --sub-type "短袖衬衫" \
-  --primary-color "米白色" --material "冰丝缎面" \
-  --style "简约,通勤" --season "春,夏" --temp-range "18~32"
+  --primary-color "米白色" --primary-hex "#F5F0E8" \
+  --material "冰丝缎面" --style "简约,通勤" \
+  --season "春,夏" --temp-range "18~32"
 
 # 5. 查看衣橱
 python scripts/wardrobe_ops.py list
 
-# 6. 生成可视化 UI
+# 6. 生成可视化仪表盘
 python build_ui.py
 #    浏览器打开 ui/outfit.html
 ```
 
 ---
 
-## 📂 目录结构
+## 🛠️ 命令速查
+
+```bash
+# 衣橱管理
+python scripts/wardrobe_ops.py add --type "上衣" --sub-type "T恤" --primary-color "黑色"
+python scripts/wardrobe_ops.py list [--json] [--category "上衣"] [--style "通勤"]
+python scripts/wardrobe_ops.py show item_001
+python scripts/wardrobe_ops.py update item_001 --wear-count 5
+python scripts/wardrobe_ops.py delete item_001          # 移到归档
+python scripts/wardrobe_ops.py stats
+python scripts/wardrobe_ops.py record --items item_001,item_003 --occasion "通勤"
+
+# 天气查询
+python scripts/weather.py --city "大连"
+
+# 搭配评分
+python scripts/scorer.py --items item_001,item_003,item_006 --occasion "通勤" --temp 22
+
+# 色彩协调度
+python scripts/color_math.py --items item_001,item_003,item_006
+python scripts/color_math.py --colors "#F5F0E8,#C4A97D,#111111"
+
+# 可视化 UI
+python build_ui.py                                       # 生成 ui/outfit.html
+```
+
+---
+
+## 🎨 色彩评分技术
+
+### 为什么比"规则"更准
 
 ```
-superoutfit/
-├── SKILL.md                # AI Agent 指令文件
-├── README.md               # 本文件
-├── LICENSE                 # MIT License
-├── setup.py                # 首次安装脚本
-├── build_ui.py             # 生成可视化 HTML
-├── export.py               # 导出分享包（不含个人数据）
-│
-├── scripts/                # 核心工具
-│   ├── wardrobe_ops.py     # 衣物 CRUD（增删改查 + 统计）
-│   ├── weather.py          # 天气查询（Open-Meteo 免费 API）
-│   └── scorer.py           # 搭配评分（6 维度）
-│
-├── templates/              # 数据模板（参考用）
-│   ├── item_template.yaml  # 衣物模板
-│   ├── profile_template.yaml # 用户画像模板
-│   └── outfit_template.yaml  # 搭配方案模板
-│
-└── data/                   # 用户数据（.gitignore 排除）
-    ├── profile.yaml        # 个人画像
-    ├── wardrobe_index.yaml # 衣物索引（自动生成）
-    ├── history.yaml        # 穿搭历史
-    ├── preferences.yaml    # AI 学习偏好
-    ├── items/              # 衣物详情，每件一个 YAML
-    ├── outfits/            # 搭配方案
-    ├── images/             # 衣物图片（直接拖入）
-    └── archive/            # 已淘汰衣物归档
+传统方案：专家写的规则 → 同色系 95 分，撞色 55 分
+  问题：规则有主观偏见，无法覆盖"意外好看"的组合
+
+SuperOutfit：5462 组人类点赞色卡 → 学习人类审美共识
+  优势：被 4 万人的点赞验证过，包含规则无法覆盖的配色
 ```
+
+### 数据管道
+
+```
+6400 原始色卡
+  → 剔除离群（全黑/全白/霓虹色 938 组）
+  → 5462 干净色卡
+  → 1456 组有人类点赞 → 百分位分数
+  → Sparse GP 迁移模型 → 预测 4006 组无赞色卡
+  → 5462 组全部有分数
+  → Sparse GP 最终模型（500 诱导点，MAE 6.95，训练 ~10 秒）
+```
+
+### 42 维特征
+
+```
+27 维 HSL 色彩空间：
+  加权平均 HSL / 简单平均 HSL / 色相统计 / 饱和度统计
+  明度统计 / 色相距离统计 / 有彩色比例 / 面积熵 / 颜色数量
+
+15 维 OKLab 感知色彩空间：
+  加权平均 Lab / 简单平均 Lab / L 统计
+  Chroma 统计 / Hue 距离
+  （等数值距离 = 等感知差异，比 HSL 更适合色彩计算）
+```
+
+---
+
+## 📦 分享给别人
+
+```bash
+# 导出 zip（不含个人数据）
+python export.py
+
+# 或直接发 Git 仓库链接
+# .gitignore 已排除所有个人数据
+```
+
+接收者：`git clone` → `python setup.py` → 开始使用。
 
 ---
 
@@ -88,198 +175,53 @@ superoutfit/
 ### Hermes Agent
 
 ```bash
-# 安装到 Hermes
 cp -r . ~/.hermes/skills/productivity/superoutfit
 hermes curator pin superoutfit
-
-# 使用
 # 对 Hermes 说："帮我推荐今天的穿搭"
 ```
-
-Hermes 会自动读取 SKILL.md，调用脚本查询天气、分析衣橱、推荐搭配。
 
 ### Claude Code / OpenCode / Cursor
 
 ```bash
-# 打开项目目录
 cd superoutfit
-
-# 对 AI 说：
-# "阅读 SKILL.md，帮我查看衣橱并推荐今天的穿搭"
+# 对 AI 说："阅读 SKILL.md，帮我查看衣橱并推荐今天的穿搭"
 ```
-
-AI 会自动读取 `data/` 下的衣物和画像，调用脚本完成推荐。
 
 ### Python 直接调用
 
 ```python
 from scripts.scorer import score_outfit
 
-result = score_outfit(
-    ["item_001", "item_003", "item_006"],
-    occasion="通勤",
-    temp=22
-)
+result = score_outfit(["item_001", "item_003", "item_006"], occasion="通勤", temp=22)
 print(result["total_score"], result["grade"])
-# 87.0 A
+# 63.7 B
 ```
 
 ---
 
-## 🛠️ 命令参考
-
-### 衣橱管理
-
-```bash
-# 添加衣物
-python scripts/wardrobe_ops.py add --type "上衣" --sub-type "T恤" --primary-color "黑色"
-
-# 列出所有衣物
-python scripts/wardrobe_ops.py list
-
-# JSON 输出（供 AI 解析）
-python scripts/wardrobe_ops.py list --json
-
-# 按类型/风格/季节筛选
-python scripts/wardrobe_ops.py list --category "上衣"
-python scripts/wardrobe_ops.py list --style "通勤"
-python scripts/wardrobe_ops.py list --season "夏"
-
-# 查看单件详情
-python scripts/wardrobe_ops.py show item_001
-
-# 更新属性
-python scripts/wardrobe_ops.py update item_001 --wear-count 5 --last-worn 2026-06-02
-
-# 删除（移到归档，不丢失）
-python scripts/wardrobe_ops.py delete item_001
-
-# 从归档恢复
-python scripts/wardrobe_ops.py restore item_001
-
-# 统计概览
-python scripts/wardrobe_ops.py stats
-
-# 重建索引
-python scripts/wardrobe_ops.py reindex
-
-# 记录今天穿搭
-python scripts/wardrobe_ops.py record --items item_001,item_003 --occasion "通勤"
-```
-
-### 天气查询
-
-```bash
-# 查询天气（返回 JSON）
-python scripts/weather.py --city "大连"
-
-# 查询指定日期（未来 7 天）
-python scripts/weather.py --city "北京" --date "2026-06-05"
-
-# 列出支持的城市
-python scripts/weather.py --list-cities
-```
-
-### 搭配评分
-
-```bash
-# 评分一套搭配
-python scripts/scorer.py --items item_001,item_003,item_006 --occasion "通勤"
-
-# 附带天气评分
-python scripts/scorer.py --items item_001,item_003 --occasion "日常" --temp 25
-```
-
-### 可视化 UI
-
-```bash
-# 生成 HTML（读取数据 + 图片，打包成单文件）
-python build_ui.py
-
-# 打开浏览器查看
-start ui/outfit.html        # Windows
-open ui/outfit.html         # macOS
-xdg-open ui/outfit.html     # Linux
-```
-
----
-
-## 📋 数据格式
-
-每件衣物是一个独立的 YAML 文件：
-
-```yaml
-id: item_001
-type: 上衣
-sub_type: 短袖衬衫
-colors:
-  primary: 米白色
-  secondary: 无
-material: 冰丝缎面
-fit: 宽松落肩
-style: [简约, 通勤, 轻商务]
-season: [春, 夏, 初秋]
-temperature_range: "18~32"
-occasion: [日常通勤, 外出逛街, 轻商务会面]
-wear_count: 0
-pair_with: [休闲西裤, 直筒牛仔裤]
-restrict: [厚重高领内搭]
-image: item_001.jpg         # 图片放在 data/images/
-```
-
-完整字段说明见 `templates/item_template.yaml`。
-
----
-
-## 🎨 可视化 UI
-
-运行 `python build_ui.py` 生成自包含的 HTML 文件：
-
-- **衣橱视图** — 卡片网格，支持按类型/风格筛选，点击查看详情
-- **个人画像** — 身材、风格偏好、颜色偏好、预算
-- **搭配推荐** — 自动生成 3 套方案，带评分和搭配理由
-- **穿搭历史** — 记录每天穿了什么
-
-单文件，含图片 base64，可直接分享给别人查看。
-
----
-
-## 📦 分享给别人
-
-```bash
-# 方式 1：导出 zip（不含个人数据）
-python export.py
-# 生成 superoutfit_YYYYMMDD.zip
-
-# 方式 2：直接发 Git 仓库链接
-# .gitignore 已排除所有个人数据，可以放心 push
-```
-
-接收者运行 `python setup.py` 即可初始化空数据目录。
-
----
-
-## 🧩 架构设计
+## 📂 目录结构
 
 ```
-用户请求 → AI Agent 读取 SKILL.md
-         → 调用 weather.py 获取天气
-         → 调用 wardrobe_ops.py 读取衣橱
-         → AI 基于画像 + 天气 + 衣橱推荐搭配
-         → 调用 scorer.py 校验评分
-         → 输出推荐方案
+superoutfit/
+├── AGENTS.md / SKILL.md / README.md
+├── setup.py / build_ui.py / export.py
+├── scripts/
+│   ├── wardrobe_ops.py         # 衣物 CRUD
+│   ├── weather.py              # 天气查询
+│   ├── scorer.py               # 搭配评分（6 维度）
+│   ├── color_math.py           # 色彩协调度（GP 模型）
+│   ├── like_based_scoring.py   # 点赞迁移 + 模型训练
+│   ├── scrape_palettes.py      # 色卡爬虫
+│   └── scrape_wxsecai.py       # 色采爬虫
+├── templates/                  # 数据模板
+├── references/                 # 12 篇穿搭知识
+└── data/                       # 用户数据（.gitignore 排除）
+    ├── items/ / outfits/ / images/
+    ├── raw_palettes.json       # 5462 组色卡
+    ├── scored_palettes.json    # 色卡 + 分数
+    ├── color_model_gp.pkl      # GP 模型
+    └── profile.yaml / history.yaml
 ```
-
-评分算法权重：
-
-| 维度 | 权重 | 说明 |
-|------|------|------|
-| 颜色协调 | 25% | 安全色系 + 冲突检测 |
-| 风格一致 | 20% | 风格兼容矩阵 |
-| 场合匹配 | 20% | 衣物 occasion 标签匹配 |
-| 天气适配 | 15% | 温度范围匹配 |
-| 穿着新鲜度 | 10% | 鼓励穿少穿的衣物 |
-| 用户偏好 | 10% | 颜色 + 风格偏好匹配 |
 
 ---
 
@@ -287,10 +229,9 @@ python export.py
 
 [MIT](LICENSE)
 
----
-
 ## 🙏 致谢
 
-- [Open-Meteo](https://open-meteo.com/) — 免费天气 API
-- [PyYAML](https://pyyaml.org/) — YAML 解析
+- [Color Hunt](https://colorhunt.co) — 热门配色方案
+- [色采](https://www.wxsecai.com) — 名画/故宫/摄影配色
+- [Open-Meteo](https://open-meteo.com) — 免费天气 API
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) — AI Agent 框架
