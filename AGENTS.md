@@ -25,10 +25,9 @@ D:\Application\SuperOutfit\
 ├── SKILL.md                # Hermes Agent 指令文件
 ├── README.md               # 用户文档
 ├── LICENSE                 # MIT
-├── setup.py                # 首次安装脚本
-├── build_ui.py             # 生成可视化 HTML
-├── export.py               # 导出分享包
-├── install_skill.py        # 从应用目录同步文档到 skill 目录
+├── superoutfit.py          # CLI 入口（统一命令）
+├── server.py               # MCP Server
+├── pyproject.toml          # Python 依赖 + CLI 入口点
 │
 ├── api/                    # FastAPI 后端
 │   └── main.py             # 12+ REST 端点，静态文件服务
@@ -46,7 +45,7 @@ D:\Application\SuperOutfit\
 │   ├── vite.config.js      # Vite 配置 + API 代理
 │   └── package.json
 │
-├── scripts/                # 核心脚本
+├── scripts/                # 核心脚本 + 工具
 │   ├── wardrobe_ops.py     # 衣物 CRUD（add/list/show/update/delete/stats/reindex/record/restore）
 │   ├── weather.py          # 天气查询（Open-Meteo 免费 API）
 │   ├── scorer.py           # 搭配评分（6 维度，调用 color_math.py）
@@ -54,12 +53,17 @@ D:\Application\SuperOutfit\
 │   ├── like_based_scoring.py # 特征提取 + 点赞迁移 + 7 级评分
 │   ├── train_color_model.py # 色彩模型训练（特征提取 + 线性回归 + GP）
 │   ├── scrape_palettes.py  # 色卡爬虫（Color Hunt + Colormind + LOL Colors + Design Seeds）
-│   └── scrape_wxsecai.py   # 色卡爬虫（色采 wxsecai.com / colorcollect.cn）
+│   ├── scrape_wxsecai.py   # 色卡爬虫（色采 wxsecai.com / colorcollect.cn）
+│   ├── init_data.py        # 首次初始化数据目录
+│   ├── export.py           # 导出分享包
+│   ├── install_skill.py    # 从应用目录同步文档到 skill 目录
+│   └── templates/          # 数据模板
+│       ├── item_template.yaml
+│       ├── profile_template.yaml
+│       └── outfit_template.yaml
 │
-├── templates/              # 数据模板
-│   ├── item_template.yaml  # 衣物模板（含 HEX 色值字段）
-│   ├── profile_template.yaml
-│   └── outfit_template.yaml
+├── docs/                   # 项目文档
+│   └── architecture.md     # 架构演进记录
 │
 ├── references/             # 穿搭领域知识（按需加载）
 │   ├── color.md            # 色彩搭配规则

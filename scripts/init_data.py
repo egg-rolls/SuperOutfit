@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 SuperOutfit 首次安装脚本
-用法：python setup.py
+用法：python scripts/init_data.py
 
 初始化空的 data/ 目录结构，用户可以立即开始添加衣物。
 """
@@ -9,9 +9,9 @@ SuperOutfit 首次安装脚本
 import shutil
 from pathlib import Path
 
-SKILL_DIR = Path(__file__).resolve().parent
-DATA_DIR = SKILL_DIR / "data"
-TEMPLATES_DIR = SKILL_DIR / "templates"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
+TEMPLATES_DIR = PROJECT_ROOT / "scripts" / "templates"
 
 DIRS = [
     "items",
@@ -53,38 +53,32 @@ updated_at: ""
 def main():
     print("=== SuperOutfit 初始化 ===\n")
 
-    # Create directories
+    # 创建目录
     for d in DIRS:
         path = DATA_DIR / d
         path.mkdir(parents=True, exist_ok=True)
         print(f"  [dir]  data/{d}/")
 
-    # Create initial files (only if not exist)
+    # 创建初始文件
     for filename, content in INIT_FILES.items():
         path = DATA_DIR / filename
-        if not path.exists():
-            path.write_text(content, encoding="utf-8")
-            print(f"  [file] data/{filename}")
-        else:
+        if path.exists():
             print(f"  [skip] data/{filename} (已存在)")
-
-    # Copy profile template (only if not exist)
-    profile_dst = DATA_DIR / "profile.yaml"
-    if not profile_dst.exists():
-        profile_src = TEMPLATES_DIR / "profile_template.yaml"
-        if profile_src.exists():
-            shutil.copy2(profile_src, profile_dst)
-            print(f"  [file] data/profile.yaml (从模板复制)")
         else:
-            profile_dst.write_text("# 请填写你的用户画像\n", encoding="utf-8")
-            print(f"  [file] data/profile.yaml (空文件)")
-    else:
-        print(f"  [skip] data/profile.yaml (已存在)")
+            path.write_text(content, encoding="utf-8")
+            print(f"  [new]  data/{filename}")
+
+    # 复制模板
+    for template in TEMPLATES_DIR.glob("*.yaml"):
+        dest = DATA_DIR / template.name
+        if not dest.exists():
+            shutil.copy2(template, dest)
+            print(f"  [copy] {template.name} → data/{template.name}")
 
     print(f"\n初始化完成！数据目录：{DATA_DIR}")
     print("\n下一步：")
     print("  1. 编辑 data/profile.yaml 填写你的个人信息")
-    print("  2. 添加衣物：python scripts/wardrobe_ops.py add --help")
+    print("  2. 添加衣物：superoutfit wardrobe add --help")
     print("  3. 或直接把衣物图片拖到 data/images/ 目录")
 
 if __name__ == "__main__":

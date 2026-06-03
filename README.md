@@ -260,7 +260,7 @@ SuperOutfit：5462 组人类点赞色卡 → 学习人类审美共识
 
 ```bash
 # 导出 zip（不含个人数据）
-uv run python export.py
+uv run python scripts/export.py
 
 # 或直接发 Git 仓库链接
 # .gitignore 已排除所有个人数据

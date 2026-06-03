@@ -3,15 +3,14 @@
 SuperOutfit Skill 安装脚本
 将 SKILL.md + references/ 复制到 Hermes skill 目录
 
-用法：python install_skill.py
+用法：python scripts/install_skill.py
 """
 
 import shutil
 import os
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
 SKILL_DIR = HERMES_HOME / "skills" / "productivity" / "superoutfit"
 
@@ -19,8 +18,8 @@ def main():
     print("=== SuperOutfit Skill 安装 ===\n")
 
     # 确认源文件存在
-    skill_md = ROOT / "SKILL.md"
-    refs_dir = ROOT / "references"
+    skill_md = PROJECT_ROOT / "SKILL.md"
+    refs_dir = PROJECT_ROOT / "references"
 
     if not skill_md.exists():
         print(f"错误：找不到 {skill_md}")
@@ -48,22 +47,19 @@ def main():
     print(f"其他 Agent：在项目目录中对 AI 说 '阅读 SKILL.md'")
 
     # 生成 MCP 配置示例
-    mcp_config = {
-        "mcpServers": {
-            "superoutfit": {
-                "command": sys.executable,
-                "args": [str(ROOT / "server.py")],
-            }
-        }
-    }
-
-    config_path = ROOT / ".mcp.json.example"
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(mcp_config, f, indent=2)
-    print(f"\nMCP 配置示例已生成：{config_path}")
+    mcp_config = f"""{{
+  "mcpServers": {{
+    "superoutfit": {{
+      "command": "python",
+      "args": ["{PROJECT_ROOT / 'server.py'}"]
+    }}
+  }}
+}}"""
+    
+    mcp_example = PROJECT_ROOT / ".mcp.json.example"
+    mcp_example.write_text(mcp_config, encoding="utf-8")
+    print(f"\nMCP 配置示例已生成：{mcp_example}")
     print(f"复制到你的 Agent 配置目录即可使用 MCP 工具")
-
-import json
 
 if __name__ == "__main__":
     main()

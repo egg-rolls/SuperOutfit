@@ -160,7 +160,7 @@ D   < 20   差       明显不搭
 
 ```bash
 # 安装 skill 到 Hermes
-python D:\Application\SuperOutfit\install_skill.py
+python D:\Application\SuperOutfit\scripts\install_skill.py
 
 # Pin 防止被 curator 归档
 hermes curator pin superoutfit
