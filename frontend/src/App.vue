@@ -1,348 +1,91 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { marked } from 'marked'
-import { api } from './services/api'
+import { ref, onMounted, computed } from 'vue'
+import { useWardrobe } from './composables/useWardrobe'
+import { useProfile } from './composables/useProfile'
+import { usePalettes } from './composables/usePalettes'
+import { useRefs } from './composables/useRefs'
+import AppHeader from './components/AppHeader.vue'
+import TabNav from './components/TabNav.vue'
+import WardrobeView from './views/WardrobeView.vue'
+import PalettesView from './views/PalettesView.vue'
+import RefsView from './views/RefsView.vue'
+import ProfileView from './views/ProfileView.vue'
+import RecommendView from './views/RecommendView.vue'
 
-const D = ref({ profile: {}, items: [], palettes: [], refs: [], history: [] })
-const loading = ref(true)
 const activeTab = ref('wardrobe')
-const filter = ref('all')
-const modalItem = ref(null)
-const modalRef = ref(null)
-const editingRef = ref(null)
-const editContent = ref('')
-const editMode = ref('preview') // 'preview' | 'edit'
 
-const CM = {
-  '纯白':'#f8f8f8','白色':'#f8f8f8','米白':'#f5f0e8','米白色':'#f5f0e8',
-  '黑色':'#1a1a1a','炭黑':'#2a2a2a','深灰黑色':'#333','纯黑色':'#111111',
-  '藏青':'#1a3a5c','藏青色':'#1a3a5c','深浅灰':'#888','灰色':'#999',
-  '卡其色':'#c4a97d','卡其':'#c4a97d','复古枪黑色':'#4a4a4a'
-}
+const { items, stats, loading: wardrobeLoading, load: loadWardrobe, getImgUrl, getColor, getTypes, getStyles, filterItems } = useWardrobe()
+const { profile, load: loadProfile } = useProfile()
+const { palettes, load: loadPalettes } = usePalettes()
+const { refs, load: loadRefs, update: updateRef, remove: removeRef } = useRefs()
+
+const computedStats = computed(() => ({
+  total: items.value.length,
+  types: getTypes().length,
+  palettes: palettes.value.length,
+  refs: refs.value.length,
+  favorites: items.value.filter(i => i.favorite).length
+}))
 
 async function loadAll() {
-  loading.value = true
-  try {
-    const [profile, items, stats, palettes] = await Promise.all([
-      api.profile.get().catch(() => ({})),
-      api.wardrobe.list().catch(() => []),
-      api.wardrobe.stats().catch(() => ({})),
-      api.palettes(100).catch(() => [])
-    ])
-    const refList = await api.references.list().catch(() => [])
-    // 逐个加载知识库内容
-    const refDocs = await Promise.all(
-      refList.map(name => api.references.get(name).catch(() => null))
-    )
-    D.value = { profile, items, stats, palettes, refs: refDocs.filter(Boolean), history: [] }
-  } catch (e) {
-    console.error('加载失败:', e)
-  } finally {
-    loading.value = false
-  }
+  await Promise.all([
+    loadWardrobe(),
+    loadProfile(),
+    loadPalettes(),
+    loadRefs()
+  ])
 }
 
-function switchTab(tab) {
-  activeTab.value = tab
+function handleDeleteRef(filename) {
+  removeRef(filename)
 }
 
-function getImgUrl(item) {
-  return item.image ? `http://localhost:8001/api/images/${item.image}` : null
-}
-
-function getColor(item) {
-  return CM[item.colors?.primary] || item.colors?.primary_hex || '#ccc'
-}
-
-function getFilteredItems() {
-  if (filter.value === 'all') return D.value.items
-  const [k, v] = filter.value.split(':')
-  if (k === 'type') return D.value.items.filter(i => i.type === v)
-  if (k === 'style') return D.value.items.filter(i => (i.style || []).includes(v))
-  return D.value.items
-}
-
-function getTypes() {
-  return [...new Set(D.value.items.map(i => i.type))]
-}
-
-function getStyles() {
-  return [...new Set(D.value.items.flatMap(i => i.style || []))].slice(0, 8)
-}
-
-function openModal(item) {
-  modalItem.value = item
-}
-
-function closeModal() {
-  modalItem.value = null
-  modalRef.value = null
-  editingRef.value = null
-  editMode.value = 'preview'
-}
-
-function openRefModal(ref) {
-  modalRef.value = ref
-  editMode.value = 'preview'
-  editingRef.value = null
-}
-
-function startEditRef() {
-  editingRef.value = modalRef.value.filename
-  editContent.value = modalRef.value.content
-  editMode.value = 'edit'
-}
-
-function cancelEditRef() {
-  editingRef.value = null
-  editContent.value = ''
-  editMode.value = 'preview'
-}
-
-async function saveEditRef() {
-  try {
-    await api.references.update(editingRef.value, editContent.value)
-    // 更新本地数据
-    const idx = D.value.refs.findIndex(r => r.filename === editingRef.value)
-    if (idx >= 0) D.value.refs[idx].content = editContent.value
-    if (modalRef.value && modalRef.value.filename === editingRef.value) {
-      modalRef.value.content = editContent.value
-    }
-    editingRef.value = null
-    editContent.value = ''
-    editMode.value = 'preview'
-  } catch (e) {
-    alert('保存失败: ' + e.message)
-  }
-}
-
-async function deleteRef(filename) {
-  if (!confirm(`确定要删除 ${filename} 吗？此操作不可恢复。`)) return
-  try {
-    await api.references.delete(filename)
-    D.value.refs = D.value.refs.filter(r => r.filename !== filename)
-  } catch (e) {
-    alert('删除失败: ' + e.message)
-  }
-}
-
-function renderMarkdown(content) {
-  return marked(content || '')
-}
-
-function getStats() {
-  const items = D.value.items
-  const byT = {}
-  items.forEach(i => { byT[i.type] = (byT[i.type] || 0) + 1 })
-  return {
-    total: items.length,
-    types: Object.keys(byT).length,
-    palettes: D.value.palettes?.length || 0,
-    refs: D.value.refs?.length || 0,
-    favorites: items.filter(i => i.favorite).length
-  }
+function handleSaveRef(filename, content) {
+  updateRef(filename, content)
 }
 
 onMounted(loadAll)
 </script>
 
 <template>
-  <div class="header">
-    <h1>🧥 SuperOutfit</h1>
-    <div class="subtitle">
-      {{ D.profile.body?.height || '?' }}cm / {{ D.profile.body?.weight || '?' }}kg ·
-      {{ D.profile.location || D.profile.city || '?' }} ·
-      {{ D.profile.lifestyle?.occupation || '' }}
-    </div>
-    <div class="stats-bar">
-      <div class="stat"><div class="stat-value">{{ getStats().total }}</div><div class="stat-label">衣物</div></div>
-      <div class="stat"><div class="stat-value">{{ getStats().types }}</div><div class="stat-label">类别</div></div>
-      <div class="stat"><div class="stat-value">{{ getStats().palettes }}</div><div class="stat-label">色卡</div></div>
-      <div class="stat"><div class="stat-value">{{ getStats().refs }}</div><div class="stat-label">知识</div></div>
-      <div class="stat"><div class="stat-value">{{ getStats().favorites }}</div><div class="stat-label">收藏</div></div>
-    </div>
-  </div>
-
+  <AppHeader :profile="profile" :stats="computedStats" />
+  
   <div class="container">
-    <div class="tabs">
-      <button :class="['tab', activeTab === 'wardrobe' && 'active']" @click="switchTab('wardrobe')">🧥 衣橱</button>
-      <button :class="['tab', activeTab === 'recommend' && 'active']" @click="switchTab('recommend')">✨ 推荐</button>
-      <button :class="['tab', activeTab === 'palettes' && 'active']" @click="switchTab('palettes')">🎨 色卡库</button>
-      <button :class="['tab', activeTab === 'refs' && 'active']" @click="switchTab('refs')">📚 知识库</button>
-      <button :class="['tab', activeTab === 'profile' && 'active']" @click="switchTab('profile')">👤 画像</button>
-    </div>
-
-    <!-- 衣橱 -->
-    <div v-show="activeTab === 'wardrobe'">
-      <div class="filters">
-        <button :class="['filter-btn', filter === 'all' && 'active']" @click="filter = 'all'">全部</button>
-        <button v-for="t in getTypes()" :key="t" :class="['filter-btn', filter === 'type:'+t && 'active']" @click="filter = 'type:'+t">{{ t }}</button>
-        <button v-for="s in getStyles()" :key="s" :class="['filter-btn', filter === 'style:'+s && 'active']" @click="filter = 'style:'+s">{{ s }}</button>
-      </div>
-      <div class="grid">
-        <div v-for="item in getFilteredItems()" :key="item.id" class="card" @click="openModal(item)">
-          <img v-if="getImgUrl(item)" class="card-img" :src="getImgUrl(item)" :alt="item.sub_type">
-          <div v-else class="card-img placeholder">👕</div>
-          <div class="card-body">
-            <div class="card-type">{{ item.type }} · {{ item.sub_type }}</div>
-            <div class="card-name">{{ item.colors?.primary }} {{ item.sub_type }}</div>
-            <div class="card-color">
-              <span class="card-color-dot" :style="{ background: getColor(item) }"></span>
-              {{ item.colors?.primary }}{{ item.colors?.secondary ? ' / ' + item.colors.secondary : '' }}
-            </div>
-            <div class="card-tags">
-              <span v-for="s in (item.style || []).slice(0, 3)" :key="s" class="tag">{{ s }}</span>
-            </div>
-            <div class="card-meta">
-              <span>🌡️ {{ item.temperature_range || '?' }}</span>
-              <span>穿 {{ item.wear_count || 0 }} 次</span>
-            </div>
-          </div>
-        </div>
-        <div v-if="!getFilteredItems().length" class="empty">
-          <div class="empty-icon">👔</div>衣橱为空
-        </div>
-      </div>
-    </div>
-
-    <!-- 推荐 -->
-    <div v-show="activeTab === 'recommend'" class="recommend-card">
-      <h2>✨ 今日推荐穿搭</h2>
-      <p style="color:var(--dim);margin-bottom:16px;font-size:13px">
-        基于你的风格偏好（{{ (D.profile.style?.primary || D.profile.style_preferences || []).join('/') }}）自动搭配
-      </p>
-      <div v-if="D.items.length < 2" class="empty">
-        <div class="empty-icon">✨</div>衣物太少，无法生成推荐
-      </div>
-    </div>
-
-    <!-- 色卡库 -->
-    <div v-show="activeTab === 'palettes'">
-      <div class="palette-grid">
-        <div v-for="(p, i) in D.palettes" :key="i" class="palette-card">
-          <div class="palette-swatches">
-            <div v-for="c in p.colors" :key="c" class="swatch" :style="{ background: c }" :title="c"></div>
-          </div>
-          <div class="palette-info">
-            <div class="palette-hex"><span v-for="c in p.colors" :key="c">{{ c }}</span></div>
-            <div class="palette-meta">{{ p.source || '' }}{{ p.likes ? ' · ❤️ ' + p.likes : '' }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 知识库 -->
-    <div v-show="activeTab === 'refs'" class="refs-grid">
-      <div v-for="r in D.refs" :key="r.filename" class="ref-card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <h3 style="font-size:18px;margin-bottom:10px">📄 {{ r.filename.replace('.md', '') }}</h3>
-          <button class="filter-btn" style="color:#c44;border-color:#c44" @click.stop="deleteRef(r.filename)">🗑️</button>
-        </div>
-        <div class="ref-meta">{{ r.filename }} · {{ r.content.split('\n').length }} 行</div>
-        <div class="ref-summary" style="margin-top:8px;font-size:13px;color:var(--dim);line-height:1.6">
-          {{ r.content.substring(0, 100) }}{{ r.content.length > 100 ? '...' : '' }}
-        </div>
-        <button class="filter-btn" style="margin-top:12px" @click="openRefModal(r)">📖 查看完整内容</button>
-      </div>
-      <div v-if="!D.refs.length" class="empty">
-        <div class="empty-icon">📚</div>暂无知识文档
-      </div>
-    </div>
-
-    <!-- 画像 -->
-    <div v-show="activeTab === 'profile'" class="profile-card">
-      <h2>👤 个人画像</h2>
-      <div class="profile-grid">
-        <div class="profile-item"><div class="label">身材</div><div class="value">{{ D.profile.body?.height || '?' }}cm / {{ D.profile.body?.weight || '?' }}kg · {{ D.profile.body?.build || '?' }}</div></div>
-        <div class="profile-item"><div class="label">肩宽</div><div class="value">{{ D.profile.body?.shoulder || '?' }}cm</div></div>
-        <div class="profile-item"><div class="label">三围</div><div class="value">胸{{ D.profile.measurements?.chest || '?' }} / 腰{{ D.profile.measurements?.waist || '?' }} / 臀{{ D.profile.measurements?.hip || '?' }}</div></div>
-        <div class="profile-item"><div class="label">城市</div><div class="value">{{ D.profile.location || D.profile.city || '?' }}</div></div>
-        <div class="profile-item"><div class="label">职业</div><div class="value">{{ D.profile.lifestyle?.occupation || '?' }}</div></div>
-        <div class="profile-item"><div class="label">主要风格</div><div class="value">{{ (D.profile.style?.primary || D.profile.style_preferences || []).join('、') }}</div></div>
-        <div class="profile-item"><div class="label">喜爱颜色</div><div class="value">{{ (D.profile.colors?.love || D.profile.favorite_colors || []).join('、') }}</div></div>
-        <div class="profile-item"><div class="label">预算（上/下/外套）</div><div class="value">¥{{ D.profile.budget?.top || '?' }} / ¥{{ D.profile.budget?.bottom || '?' }} / ¥{{ D.profile.budget?.outerwear || '?' }}</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 知识库详情弹窗 -->
-  <div v-if="modalRef" class="modal-overlay show" @click.self="closeModal">
-    <div class="modal" style="max-width:900px;max-height:90vh">
-      <button class="modal-close" @click="closeModal">&times;</button>
-      <div class="modal-body">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <h2 style="font-size:24px">📄 {{ modalRef.filename.replace('.md', '') }}</h2>
-          <div style="display:flex;gap:8px">
-            <button v-if="editMode === 'preview'" class="filter-btn" @click="startEditRef">✏️ 编辑</button>
-            <button v-if="editMode === 'edit'" class="filter-btn" @click="cancelEditRef">取消</button>
-            <button v-if="editMode === 'edit'" class="filter-btn active" @click="saveEditRef">💾 保存</button>
-          </div>
-        </div>
-        <div class="ref-meta" style="margin-bottom:16px">{{ modalRef.filename }} · {{ modalRef.content.split('\n').length }} 行</div>
-        
-        <!-- 编辑模式 -->
-        <div v-if="editMode === 'edit'">
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <button :class="['filter-btn', editMode === 'edit' && 'active']">源代码</button>
-          </div>
-          <textarea v-model="editContent" style="width:100%;height:60vh;padding:12px;font-family:monospace;font-size:13px;border:1px solid var(--border);border-radius:8px;resize:vertical"></textarea>
-        </div>
-        <!-- 预览模式 -->
-        <div v-else>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <button class="filter-btn active">MD 预览</button>
-            <button class="filter-btn" @click="startEditRef">源代码</button>
-          </div>
-          <div class="markdown-body" v-html="renderMarkdown(modalRef.content)"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 衣物详情弹窗 -->
-  <div v-if="modalItem" class="modal-overlay show" @click.self="closeModal">
-    <div class="modal">
-      <button class="modal-close" @click="closeModal">&times;</button>
-      <img v-if="getImgUrl(modalItem)" class="modal-img" :src="getImgUrl(modalItem)" :alt="modalItem.sub_type">
-      <div v-else class="modal-img" style="display:flex;align-items:center;justify-content:center;font-size:72px;color:#ccc;background:#f0efe9">👕</div>
-      <div class="modal-body">
-        <h2>{{ modalItem.colors?.primary }} {{ modalItem.sub_type }}</h2>
-        <div class="meta">{{ modalItem.type }} · {{ modalItem.material || '?' }} · {{ modalItem.fit || '?' }}</div>
-        <div v-if="modalItem.colors?.primary_hex" style="margin-top:8px;font-size:12px;font-family:monospace;color:var(--dim)">
-          HEX: {{ modalItem.colors.primary_hex }}{{ modalItem.colors?.secondary_hex ? ' / ' + modalItem.colors.secondary_hex : '' }}
-        </div>
-        <div class="section">
-          <div class="section-title">风格</div>
-          <div class="card-tags"><span v-for="s in (modalItem.style || [])" :key="s" class="tag">{{ s }}</span></div>
-        </div>
-        <div class="section">
-          <div class="section-title">季节 · 场合</div>
-          <div class="card-tags">
-            <span v-for="s in (modalItem.season || [])" :key="s" class="tag">{{ s }}</span>
-            <span v-for="o in (modalItem.occasion || [])" :key="o" class="tag">{{ o }}</span>
-          </div>
-        </div>
-        <div class="section">
-          <div class="section-title">适穿温度</div>
-          <div>🌡️ {{ modalItem.temperature_range || '?' }} ℃</div>
-        </div>
-        <div class="section">
-          <div class="section-title">推荐搭配</div>
-          <div class="pair-list">
-            <span v-for="p in (modalItem.pair_with || [])" :key="p" class="pair-item">{{ p }}</span>
-            <span v-if="!modalItem.pair_with?.length" style="color:#999">暂无</span>
-          </div>
-        </div>
-        <div v-if="modalItem.restrict?.length" class="section">
-          <div class="section-title">搭配禁忌</div>
-          <div v-for="r in modalItem.restrict" :key="r" class="restrict">⚠️ {{ r }}</div>
-        </div>
-        <div class="section">
-          <div class="section-title">穿着记录</div>
-          <div>穿 {{ modalItem.wear_count || 0 }} 次 · {{ modalItem.last_worn || '未穿过' }}</div>
-        </div>
-      </div>
-    </div>
+    <TabNav v-model:activeTab="activeTab" />
+    
+    <WardrobeView
+      v-show="activeTab === 'wardrobe'"
+      :items="items"
+      :getImgUrl="getImgUrl"
+      :getColor="getColor"
+      :getTypes="getTypes"
+      :getStyles="getStyles"
+      :filterItems="filterItems"
+    />
+    
+    <RecommendView
+      v-show="activeTab === 'recommend'"
+      :profile="profile"
+      :items="items"
+      :getImgUrl="getImgUrl"
+    />
+    
+    <PalettesView
+      v-show="activeTab === 'palettes'"
+      :palettes="palettes"
+    />
+    
+    <RefsView
+      v-show="activeTab === 'refs'"
+      :refs="refs"
+      @delete="handleDeleteRef"
+      @save="handleSaveRef"
+    />
+    
+    <ProfileView
+      v-show="activeTab === 'profile'"
+      :profile="profile"
+    />
   </div>
 </template>
 
@@ -422,8 +165,6 @@ body {
 .ref-card .ref-meta { font-size: 11px; color: var(--dim); margin-bottom: 8px; }
 .empty { text-align: center; padding: 60px 20px; color: var(--dim); }
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
-
-/* Markdown body */
 .markdown-body { line-height: 1.8; font-size: 14px; }
 .markdown-body h1, .markdown-body h2, .markdown-body h3 { margin: 20px 0 10px; font-weight: 600; }
 .markdown-body h1 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
@@ -441,7 +182,6 @@ body {
 .markdown-body th { background: var(--bg); font-weight: 600; }
 .markdown-body strong { font-weight: 600; }
 .markdown-body a { color: var(--accent); text-decoration: underline; }
-
 @media(max-width: 600px) {
   .header { padding: 20px; }
   .header h1 { font-size: 22px; }
