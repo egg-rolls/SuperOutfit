@@ -621,10 +621,12 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .ref-card:hover {
   border-color: var(--hairline);
+  box-shadow: 0 2px 8px rgba(20, 20, 19, 0.06);
 }
 
 .ref-card h3 {

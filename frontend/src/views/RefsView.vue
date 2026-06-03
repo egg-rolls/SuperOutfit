@@ -25,40 +25,49 @@ function handleSave(filename, content) {
   }
 }
 
-function handleDelete(filename) {
+function handleDelete(filename, event) {
+  event.stopPropagation()
   if (confirm(`确定要删除 ${filename} 吗？此操作不可恢复。`)) {
     emit('delete', filename)
+    if (modalRef.value && modalRef.value.filename === filename) {
+      closeModal()
+    }
   }
+}
+
+function getDisplayName(filename) {
+  return filename.replace('.md', '').replace(/[-_]/g, ' ')
 }
 </script>
 
 <template>
   <div>
     <div class="refs-grid">
-      <div v-for="r in refs" :key="r.filename" class="ref-card">
+      <div v-for="r in refs" :key="r.filename" class="ref-card" @click="openModal(r)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <h3>{{ r.filename.replace('.md', '') }}</h3>
-          <button class="btn btn-danger" style="padding:4px 8px;font-size:12px" @click.stop="handleDelete(r.filename)">删除</button>
+          <h3>{{ getDisplayName(r.filename) }}</h3>
+          <button class="btn btn-danger" style="padding:4px 8px;font-size:12px" @click="handleDelete(r.filename, $event)">删除</button>
         </div>
-        <div class="ref-meta">{{ r.filename }} · {{ r.content.split('\n').length }} 行</div>
         <div style="margin-top:var(--space-sm);font-size:14px;color:var(--muted);line-height:1.6">
           {{ r.content.substring(0, 100) }}{{ r.content.length > 100 ? '...' : '' }}
         </div>
-        <button class="btn btn-secondary" style="margin-top:var(--space-sm)" @click="openModal(r)">查看完整内容</button>
       </div>
       <div v-if="!refs.length" class="empty">
         <div class="empty-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
           </svg>
         </div>
         暂无知识文档
       </div>
     </div>
-    <RefModal v-if="modalRef" :refData="modalRef" @close="closeModal" @save="handleSave" />
+    <RefModal 
+      v-if="modalRef" 
+      :refData="modalRef" 
+      @close="closeModal" 
+      @save="handleSave"
+      @delete="handleDelete"
+    />
   </div>
 </template>
