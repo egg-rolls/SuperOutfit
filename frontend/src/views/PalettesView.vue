@@ -12,7 +12,7 @@ defineProps({
       </div>
       <div class="palette-info">
         <div class="palette-hex"><span v-for="c in p.colors" :key="c">{{ c }}</span></div>
-        <div class="palette-meta">{{ p.source || '' }}{{ p.likes ? ' · ❤️ ' + p.likes : '' }}</div>
+        <div class="palette-meta">{{ p.source || '' }}{{ p.likes ? ' · ' + p.likes + ' likes' : '' }}</div>
       </div>
     </div>
   </div>

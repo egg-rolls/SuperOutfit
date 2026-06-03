@@ -7,7 +7,7 @@ defineProps({
 
 <template>
   <div class="header">
-    <h1>🧥 SuperOutfit</h1>
+    <h1>SuperOutfit</h1>
     <div class="subtitle">
       {{ profile.body?.height || '?' }}cm / {{ profile.body?.weight || '?' }}kg ·
       {{ profile.location || profile.city || '?' }} ·

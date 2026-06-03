@@ -6,7 +6,7 @@ defineProps({
 
 <template>
   <div class="profile-card">
-    <h2>👤 个人画像</h2>
+    <h2>个人画像</h2>
     <div class="profile-grid">
       <div class="profile-item"><div class="label">身材</div><div class="value">{{ profile.body?.height || '?' }}cm / {{ profile.body?.weight || '?' }}kg · {{ profile.body?.build || '?' }}</div></div>
       <div class="profile-item"><div class="label">肩宽</div><div class="value">{{ profile.body?.shoulder || '?' }}cm</div></div>
