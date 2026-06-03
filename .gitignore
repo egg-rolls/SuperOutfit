@@ -23,6 +23,10 @@ data/scored_palettes.json
 ui/outfit.html
 *.zip
 
+# 前端
+frontend/node_modules/
+frontend/dist/
+
 # Python
 __pycache__/
 *.pyc
