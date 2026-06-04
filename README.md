@@ -30,13 +30,13 @@
 ### Windows (PowerShell)
 
 ```powershell
-iex (irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.ps1)
+iex (irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install.ps1)
 ```
 
 ### macOS / Linux (Bash)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install.sh | bash
 ```
 
 安装完成后，打开新终端，直接使用：
