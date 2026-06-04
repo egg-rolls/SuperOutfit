@@ -140,12 +140,40 @@ function Install-Python {
 # Stage 4: Clone or update repository
 # ============================================================================
 
+function Stop-SuperOutfitProcesses {
+    # Stop any running SuperOutfit processes to release file locks
+    $processes = @("superoutfit", "python")
+    $stopped = $false
+    
+    foreach ($procName in $processes) {
+        $procs = Get-Process -Name $procName -ErrorAction SilentlyContinue | Where-Object {
+            $_.Path -like "*SuperOutfit*"
+        }
+        foreach ($proc in $procs) {
+            try {
+                Write-Info "Stopping process: $($proc.ProcessName) (PID: $($proc.Id))"
+                Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+                $stopped = $true
+            } catch {}
+        }
+    }
+    
+    if ($stopped) {
+        Start-Sleep -Seconds 2  # Wait for processes to fully exit
+    }
+    
+    return $stopped
+}
+
 function Install-Repository {
     Write-Step "Checking repository"
     
     $didUpdate = $false
     
     if (Test-Path $InstallDir) {
+        # Stop running processes first
+        Stop-SuperOutfitProcesses | Out-Null
+        
         # Validate existing repo
         $repoValid = $false
         if (Test-Path "$InstallDir\.git") {
