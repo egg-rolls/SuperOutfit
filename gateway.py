@@ -140,6 +140,33 @@ def get_gateway_status() -> dict:
     }
 
 
+def get_venv_python():
+    """获取 venv 中的 Python 路径"""
+    # 检查当前目录是否有 .venv
+    venv_paths = [
+        Path.cwd() / ".venv" / "Scripts" / "python.exe",  # Windows
+        Path.cwd() / ".venv" / "bin" / "python",  # Unix
+    ]
+    
+    for p in venv_paths:
+        if p.exists():
+            return str(p)
+    
+    # 检查项目根目录
+    project_root = Path(__file__).parent
+    venv_paths = [
+        project_root / ".venv" / "Scripts" / "python.exe",
+        project_root / ".venv" / "bin" / "python",
+    ]
+    
+    for p in venv_paths:
+        if p.exists():
+            return str(p)
+    
+    # 回退到当前 Python
+    return sys.executable
+
+
 # 子进程管理
 class ServiceManager:
     """服务管理器"""
@@ -250,6 +277,7 @@ class Gateway:
     def __init__(self, args):
         self.args = args
         self.manager = ServiceManager()
+        self.python = get_venv_python()
         self.ports = {
             "api": args.port,
             "frontend": args.port + 1,
@@ -277,7 +305,7 @@ class Gateway:
         self.ports["api"] = port
         
         cmd = [
-            sys.executable, "-m", "uvicorn",
+            self.python, "-m", "uvicorn",
             "api.main:app",
             "--host", "0.0.0.0",
             "--port", str(port),
@@ -330,7 +358,7 @@ class Gateway:
                     dist_dir.mkdir(exist_ok=True)
                     (dist_dir / "index.html").write_text("<h1>SuperOutfit</h1><p>前端未构建，请确保 Node.js 已安装</p>")
             
-            cmd = [sys.executable, "-m", "http.server", str(port), "--directory", str(dist_dir)]
+            cmd = [self.python, "-m", "http.server", str(port), "--directory", str(dist_dir)]
         
         self.manager.start_service("frontend", cmd, cwd=str(frontend_dir))
         print(f"    http://localhost:{port}")
@@ -346,7 +374,7 @@ class Gateway:
             print("  ⚠ MCP 服务文件不存在，跳过")
             return
         
-        cmd = [sys.executable, "server.py"]
+        cmd = [self.python, "server.py"]
         self.manager.start_service("mcp", cmd)
         print("    stdio://")
     
