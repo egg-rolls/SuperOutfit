@@ -249,18 +249,22 @@ class ServiceManager:
     
     def monitor(self):
         """监控服务"""
+        reported_exit = set()
+        
         while self.running:
             for name, process in list(self.services.items()):
                 if process.poll() is not None:
                     # 服务已退出
-                    output = process.stdout.read() if process.stdout else ""
-                    
-                    print(f"\n⚠ {name} 服务已退出 (返回码: {process.returncode})")
-                    if output:
-                        # 只显示最后 10 行
-                        lines = output.strip().split("\n")
-                        for line in lines[-10:]:
-                            print(f"  {line}")
+                    if name not in reported_exit:
+                        output = process.stdout.read() if process.stdout else ""
+                        
+                        print(f"\n⚠ {name} 服务已退出 (返回码: {process.returncode})")
+                        if output:
+                            lines = output.strip().split("\n")
+                            for line in lines[-10:]:
+                                print(f"  {line}")
+                        
+                        reported_exit.add(name)
                     
                     # 如果是 API 服务退出，停止所有服务
                     if name == "api":
@@ -366,17 +370,13 @@ class Gateway:
     def start_mcp(self):
         """启动 MCP Server"""
         if self.args.no_mcp:
-            print("  跳过 MCP 服务")
+            print("  跳过 MCP 服务 (stdio 服务需由 MCP 客户端启动)")
             return
         
-        server_file = ROOT_DIR / "server.py"
-        if not server_file.exists():
-            print("  ⚠ MCP 服务文件不存在，跳过")
-            return
-        
-        cmd = [self.python, "server.py"]
-        self.manager.start_service("mcp", cmd)
-        print("    stdio://")
+        # MCP 是 stdio 服务，不适合由 gateway 启动
+        # 由 MCP 客户端 (如 Claude Desktop) 直接启动
+        print("  MCP 服务: 由 MCP 客户端启动 (stdio://)")
+        print("    配置: .agent-configs/mcp.json")
     
     def wait_for_services(self, timeout: int = 30):
         """等待服务启动"""
