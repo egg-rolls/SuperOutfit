@@ -104,16 +104,31 @@ def wardrobe_menu():
         elif choice == 2:
             # 查看衣橱
             sys.path.insert(0, str(SKILL_DIR / "scripts"))
-            from wardrobe_ops import list_items
-            list_items()
+            import wardrobe_ops
+            # 创建模拟 args 对象
+            class Args:
+                pass
+            args = Args()
+            args.type = None
+            args.color = None
+            args.brand = None
+            args.season = None
+            args.sort = "id"
+            args.stats = False
+            wardrobe_ops.cmd_list(args)
             input("\n按 Enter 继续...")
         elif choice == 3:
             # 查看详情
             item_id = input("\n请输入衣物 ID（如 item_001）: ").strip()
             if item_id:
                 sys.path.insert(0, str(SKILL_DIR / "scripts"))
-                from wardrobe_ops import show_item
-                show_item(item_id)
+                import wardrobe_ops
+                class Args:
+                    pass
+                args = Args()
+                args.item_id = item_id
+                args.format = "yaml"
+                wardrobe_ops.cmd_show(args)
             input("\n按 Enter 继续...")
         elif choice == 4:
             # 更新衣物
