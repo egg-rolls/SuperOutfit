@@ -454,7 +454,7 @@ class Gateway:
 
 def main():
     parser = argparse.ArgumentParser(description="SuperOutfit Gateway")
-    parser.add_argument("--port", type=int, default=3220, help="API 端口 (默认: 3220)")
+    parser.add_argument("--port", type=int, default=32200, help="API 端口 (默认: 32200)")
     parser.add_argument("--no-frontend", action="store_true", help="不启动前端")
     parser.add_argument("--no-mcp", action="store_true", help="不启动 MCP")
     parser.add_argument("--dev", action="store_true", help="开发模式")
