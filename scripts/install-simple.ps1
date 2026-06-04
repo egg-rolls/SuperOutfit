@@ -65,22 +65,33 @@ if (-not $pythonInstalled) {
     Write-Host "   ✓ Python installed" -ForegroundColor Green
 }
 
-# Step 4: Clone repository
-Write-Host "=> Cloning repository..." -ForegroundColor Cyan
-if (Test-Path $InstallDir) {
-    Write-Host "   Removing old installation..." -ForegroundColor Yellow
-    Remove-Item -Recurse -Force $InstallDir
-}
-
-git clone --depth 1 $RepoUrl $InstallDir 2>&1 | Out-Null
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "   ✓ Repository cloned" -ForegroundColor Green
+# Step 4: Clone or update repository
+Write-Host "=> Checking repository..." -ForegroundColor Cyan
+if (Test-Path "$InstallDir\.git") {
+    Write-Host "   Updating existing installation..." -ForegroundColor Yellow
+    Push-Location $InstallDir
+    git pull origin master 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "   ✓ Repository updated" -ForegroundColor Green
+    } else {
+        Write-Host "   ✗ Failed to update repository" -ForegroundColor Red
+    }
+    Pop-Location
 } else {
-    Write-Host "   ✗ Failed to clone repository" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Press Enter to exit..." -ForegroundColor Yellow
-    Read-Host
-    return
+    Write-Host "   Cloning repository..." -ForegroundColor Yellow
+    if (Test-Path $InstallDir) {
+        Remove-Item -Recurse -Force $InstallDir -ErrorAction SilentlyContinue
+    }
+    git clone --depth 1 $RepoUrl $InstallDir 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "   ✓ Repository cloned" -ForegroundColor Green
+    } else {
+        Write-Host "   ✗ Failed to clone repository" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Press Enter to exit..." -ForegroundColor Yellow
+        Read-Host
+        return
+    }
 }
 
 # Step 5: Create virtual environment
