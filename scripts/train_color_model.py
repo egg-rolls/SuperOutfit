@@ -435,6 +435,105 @@ def train_model():
     return {"linear_mae": mae, "linear_rmse": rmse, "gp_mae": gp_mae, "gp_rmse": gp_rmse}
 
 
+def incremental_train_gp(new_X, new_y, max_samples=5000):
+    """增量训练 GP 模型：加载现有模型 + 新数据 → 更新模型
+    
+    策略：合并旧训练数据 + 新数据，重新训练（使用旧超参数作为初始值）
+    """
+    import pickle
+    import numpy as np
+    from pathlib import Path
+    
+    GP_MODEL_PATH = Path(__file__).parent.parent / "data" / "gp_model.pkl"
+    
+    if not GP_MODEL_PATH.exists():
+        print("❌ 未找到现有 GP 模型，请先运行完整训练")
+        return None
+    
+    # 加载现有模型
+    with open(GP_MODEL_PATH, "rb") as f:
+        old_model = pickle.load(f)
+    
+    print("📊 增量训练 GP 模型...\n")
+    print(f"  现有模型类型：{old_model['type']}")
+    print(f"  现有训练样本：{old_model['training_samples']}")
+    print(f"  新增样本数：{len(new_y)}")
+    
+    # 合并数据（如果旧模型有保存训练数据）
+    if "X_train" in old_model and "y_train" in old_model:
+        X_all = np.vstack([old_model["X_train"], np.array(new_X)])
+        y_all = np.concatenate([old_model["y_train"], np.array(new_y)])
+        print(f"  合并后总样本：{len(y_all)}")
+    else:
+        # 旧模型没有保存训练数据，只用新数据
+        X_all = np.array(new_X)
+        y_all = np.array(new_y)
+        print(f"  ⚠ 旧模型未保存训练数据，仅使用新样本")
+    
+    # 子采样
+    if len(X_all) > max_samples:
+        import random
+        random.seed(42)
+        indices = random.sample(range(len(X_all)), max_samples)
+        X_all = X_all[indices]
+        y_all = y_all[indices]
+        print(f"  子采样至 {max_samples} 样本")
+    
+    # 重新训练（使用旧模型的超参数作为初始值）
+    try:
+        from sklearn.gaussian_process import GaussianProcessRegressor
+        from sklearn.gaussian_process.kernels import Matern
+        
+        # 使用旧模型的核参数（如果有）
+        if hasattr(old_model.get("model"), "kernel_"):
+            kernel = old_model["model"].kernel_
+            print(f"  复用旧核参数：{kernel}")
+        else:
+            kernel = Matern(nu=2.5, length_scale=1.0)
+        
+        gp = GaussianProcessRegressor(
+            kernel=kernel,
+            alpha=1.0,
+            n_restarts_optimizer=2,  # 增量训练时减少优化次数
+            normalize_y=True,
+            random_state=42,
+        )
+        gp.fit(X_all, y_all)
+        
+        y_pred, y_std = gp.predict(X_all, return_std=True)
+        gp_mae = float(np.mean(np.abs(y_pred - y_all)))
+        gp_rmse = float(np.sqrt(np.mean((y_pred - y_all) ** 2)))
+        
+        # 更新模型
+        new_model = {
+            "type": "sklearn",
+            "model": gp,
+            "means": old_model.get("means", []),
+            "stds": old_model.get("stds", []),
+            "n_features": old_model.get("n_features", X_all.shape[1]),
+            "training_samples": len(y_all),
+            "X_train": X_all,  # 保存训练数据用于下次增量
+            "y_train": y_all,
+            "mae": round(gp_mae, 2),
+            "rmse": round(gp_rmse, 2),
+        }
+        
+        # 保存
+        with open(GP_MODEL_PATH, "wb") as f:
+            pickle.dump(new_model, f)
+        
+        print(f"\n✅ 增量训练完成！")
+        print(f"  总样本数：{len(y_all)}")
+        print(f"  MAE：{gp_mae:.2f}")
+        print(f"  RMSE：{gp_rmse:.2f}")
+        
+        return new_model
+        
+    except Exception as e:
+        print(f"❌ 增量训练失败：{e}")
+        return None
+
+
 def train_gp_model(X_norm, y, means, stds, n_features, n):
     """训练高斯过程回归模型（Matérn 5/2 核）"""
     # GP O(n³) 复杂度，超过 2000 样本需要子采样
@@ -483,6 +582,8 @@ def train_gp_model(X_norm, y, means, stds, n_features, n):
             "stds": stds,
             "n_features": n_features,
             "training_samples": n,
+            "X_train": X_np,  # 保存训练数据用于增量训练
+            "y_train": y_np,
             "mae": round(gp_mae, 2),
             "rmse": round(gp_rmse, 2),
         }
@@ -791,6 +892,33 @@ def predict_gp(gp_model, colors_with_areas):
 if __name__ == "__main__":
     if "--verify" in sys.argv:
         verify()
+    elif "--incremental" in sys.argv:
+        # 增量训练模式：python train_color_model.py --incremental <new_data.csv>
+        if len(sys.argv) < 3:
+            print("用法：python train_color_model.py --incremental <new_data.csv>")
+            print("  CSV 格式：hex1,hex2,hex3,area1,area2,area3,score")
+            sys.exit(1)
+        
+        import csv
+        csv_path = sys.argv[2]
+        new_X = []
+        new_y = []
+        
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # 解析特征和分数
+                from color_math import extract_features
+                colors = [
+                    (row["hex1"], float(row.get("area1", 0.33))),
+                    (row["hex2"], float(row.get("area2", 0.33))),
+                    (row["hex3"], float(row.get("area3", 0.34))),
+                ]
+                features = extract_features(colors)
+                new_X.append(features)
+                new_y.append(float(row["score"]))
+        
+        incremental_train_gp(new_X, new_y)
     else:
         train_model()
         print("\n")
