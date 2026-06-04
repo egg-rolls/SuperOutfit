@@ -6,15 +6,17 @@ Usage:
     superoutfit <command> <subcommand> [options]
 
 Commands:
+    tui         交互式 TUI 模式
+    init        首次使用引导
     wardrobe    衣橱管理（add/list/show/update/delete/stats/record/reindex）
     weather     天气查询
-    recommend   穿搭推荐
+    recommend   穿搭推荐（recommend/today）
     score       搭配评分
-    color       色彩协调度
-    inverse     反向推导颜色（给定部分颜色和目标分数，推导补全颜色）
+    color       色彩协调度（score/show）
+    inverse     反向推导颜色
     palette     色卡管理（list/score/train）
     knowledge   知识库（list/show/edit）
-    config      配置查看
+    config      配置查看（config/stats）
 """
 
 import argparse
@@ -101,7 +103,15 @@ def cmd_weather(args):
 
 
 def cmd_recommend(args):
-    """穿搭推荐"""
+    """穿搭推荐 / 今日推荐"""
+    if args.subcommand == "today":
+        from today import main as today_main
+        argv = []
+        if args.city: argv.extend(["--city", args.city])
+        sys.argv = ["today.py"] + argv
+        today_main()
+        return
+    
     # TODO: 实现智能推荐逻辑
     print("🚧 推荐功能开发中...")
     print("当前可使用 score 命令评估搭配方案：")
@@ -123,12 +133,18 @@ def cmd_score(args):
 
 def cmd_color(args):
     """色彩协调度"""
-    from color_math import main as color_main
+    if args.subcommand == "show":
+        from color_show import print_color_info, print_common_colors
+        if args.hex_color:
+            print_color_info(args.hex_color)
+        else:
+            print_common_colors()
+        return
     
+    from color_math import main as color_main
     argv = []
     if args.items: argv.extend(["--items", args.items])
     if args.colors: argv.extend(["--colors", args.colors])
-    
     sys.argv = ["color_math.py"] + argv
     color_main()
 
@@ -268,7 +284,15 @@ def cmd_knowledge(args):
 
 
 def cmd_config(args):
-    """配置查看"""
+    """配置查看 / 衣橱统计"""
+    if args.subcommand == "stats":
+        from stats import main as stats_main
+        argv = []
+        if args.json: argv.append("--json")
+        sys.argv = ["stats.py"] + argv
+        stats_main()
+        return
+    
     profile_path = Path("data/profile.yaml")
     
     if not profile_path.exists():
@@ -294,9 +318,24 @@ def cmd_config(args):
 
 def cmd_version(args):
     """版本信息"""
-    print("SuperOutfit v3.0.0")
+    print("SuperOutfit v3.1.0")
     print("AI 智能穿搭顾问 — MCP + CLI")
     print("https://github.com/egg-rolls/SuperOutfit")
+
+
+def cmd_init(args):
+    """首次使用引导"""
+    from init_guide import main as init_main
+    argv = []
+    if args.quick: argv.append("--quick")
+    sys.argv = ["init_guide.py"] + argv
+    init_main()
+
+
+def cmd_tui(args):
+    """交互式 TUI 模式"""
+    from tui import main as tui_main
+    tui_main()
 
 
 def main():
@@ -321,6 +360,15 @@ def main():
     parser.add_argument("-v", "--version", action="store_true", help="显示版本信息")
     
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
+    
+    # === tui ===
+    p_tui = subparsers.add_parser("tui", help="交互式 TUI 模式")
+    p_tui.set_defaults(func=cmd_tui)
+    
+    # === init ===
+    p_init = subparsers.add_parser("init", help="首次使用引导")
+    p_init.add_argument("--quick", action="store_true", help="快速模式（使用默认值）")
+    p_init.set_defaults(func=cmd_init)
     
     # === wardrobe ===
     p_wardrobe = subparsers.add_parser("wardrobe", aliases=["w"], help="衣橱管理")
@@ -362,9 +410,11 @@ def main():
     
     # === recommend ===
     p_recommend = subparsers.add_parser("recommend", aliases=["r"], help="穿搭推荐")
+    p_recommend.add_argument("subcommand", nargs="?", default="recommend",
+                             choices=["recommend", "today"], help="子命令")
     p_recommend.add_argument("--items", help="指定衣物 ID")
     p_recommend.add_argument("--occasion", help="场合")
-    p_recommend.add_argument("--city", default="大连", help="城市")
+    p_recommend.add_argument("--city", default=None, help="城市（默认从配置读取）")
     p_recommend.set_defaults(func=cmd_recommend)
     
     # === score ===
@@ -376,8 +426,11 @@ def main():
     
     # === color ===
     p_color = subparsers.add_parser("color", aliases=["c"], help="色彩协调度")
+    p_color.add_argument("subcommand", nargs="?", default="score", 
+                         choices=["score", "show"], help="子命令")
     p_color.add_argument("--items", help="衣物 ID 列表（逗号分隔）")
     p_color.add_argument("--colors", help="HEX 色值列表（逗号分隔）")
+    p_color.add_argument("hex_color", nargs="?", help="HEX 颜色值（用于 show）")
     p_color.set_defaults(func=cmd_color)
     
     # === inverse ===
@@ -409,6 +462,9 @@ def main():
     
     # === config ===
     p_config = subparsers.add_parser("config", aliases=["cf"], help="配置查看")
+    p_config.add_argument("subcommand", nargs="?", default="config",
+                          choices=["config", "stats"], help="子命令")
+    p_config.add_argument("--json", action="store_true", help="JSON 输出")
     p_config.set_defaults(func=cmd_config)
     
     args = parser.parse_args()

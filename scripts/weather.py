@@ -194,7 +194,7 @@ def query_weather(city, target_date=None):
 
 def main():
     parser = argparse.ArgumentParser(description="SuperOutfit 天气查询")
-    parser.add_argument("--city", required=True, help="城市名称")
+    parser.add_argument("--city", default=None, help="城市名称（默认从配置读取）")
     parser.add_argument("--date", help="日期 YYYY-MM-DD（默认今天）")
     parser.add_argument("--list-cities", action="store_true", help="列出支持的城市")
     
@@ -206,7 +206,16 @@ def main():
             print(f"  {city}")
         return
     
-    result = query_weather(args.city, args.date)
+    # 从配置获取默认城市
+    city = args.city
+    if not city:
+        try:
+            from config import get_city
+            city = get_city()
+        except ImportError:
+            city = "大连"
+    
+    result = query_weather(city, args.date)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
