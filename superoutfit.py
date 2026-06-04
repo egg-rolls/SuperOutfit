@@ -390,14 +390,40 @@ def cmd_tui(args):
     tui_main()
 
 
-def cmd_setup(args):
-    """快速设置 Skill"""
+def cmd_skill(args):
+    """Skill 子命令路由"""
+    action = getattr(args, 'skill_action', 'install')
+    
+    if action == 'install':
+        cmd_skill_install(args)
+    elif action == 'uninstall':
+        cmd_skill_uninstall(args)
+    else:
+        cmd_skill_install(args)
+
+
+def cmd_skill_install(args):
+    """安装 Skill"""
     setup_script = Path(__file__).parent / "scripts" / "setup_skill.py"
     if not setup_script.exists():
         print("错误：找不到 setup_skill.py")
         return
     
     subprocess.run([sys.executable, str(setup_script)])
+
+
+def cmd_skill_uninstall(args):
+    """卸载 Skill"""
+    uninstall_script = Path(__file__).parent / "scripts" / "uninstall_skill.py"
+    if not uninstall_script.exists():
+        print("错误：找不到 uninstall_skill.py")
+        return
+    
+    cmd_args = [sys.executable, str(uninstall_script)]
+    if args.yes:
+        cmd_args.append("--yes")
+    
+    subprocess.run(cmd_args)
 
 
 def cmd_gateway(args):
@@ -518,7 +544,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  spof setup                           # 快速设置 Skill
+  spof skill install                   # 安装 Skill
+  spof skill uninstall                 # 卸载 Skill
   spof gateway up                      # 启动 Gateway
   spof gateway down                    # 停止 Gateway
   spof gateway restart                 # 重启 Gateway
@@ -549,9 +576,13 @@ def main():
     p_init.add_argument("--quick", action="store_true", help="快速模式（使用默认值）")
     p_init.set_defaults(func=cmd_init)
     
-    # === setup ===
-    p_setup = subparsers.add_parser("setup", help="快速设置 Skill")
-    p_setup.set_defaults(func=cmd_setup)
+    # === skill ===
+    p_skill = subparsers.add_parser("skill", help="Skill 管理")
+    p_skill.add_argument("skill_action", nargs="?", default="install",
+                        choices=["install", "uninstall"],
+                        help="操作: install(安装), uninstall(卸载)")
+    p_skill.add_argument("--yes", "-y", action="store_true", help="跳过确认")
+    p_skill.set_defaults(func=cmd_skill)
     
     # === gateway ===
     p_gateway = subparsers.add_parser("gateway", aliases=["gw"], help="Gateway 服务管理")
