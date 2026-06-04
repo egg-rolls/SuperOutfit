@@ -112,8 +112,6 @@ function Install-Python {
             if ($ver -match "3\.(\d+)\.(\d+)") {
                 $minor = [int]$Matches[1]
                 if ($minor -ge 11) {
-                    # Store the full version for uv
-                    $script:PythonVersion = "$($Matches[0]) -replace 'Python ', ''"
                     $script:PythonVersion = "3.$minor"
                     Write-Success "Python $ver"
                     return $true
@@ -327,11 +325,19 @@ function Install-Venv {
     
     if (-not $venvValid) {
         try {
+            $venvOutput = ""
             if ($script:PythonVersion) {
-                & uv venv .venv --python $script:PythonVersion 2>&1 | Out-Null
+                Write-Info "Creating venv with Python $script:PythonVersion..."
+                $venvOutput = & uv venv .venv --python $script:PythonVersion 2>&1
             } else {
-                & uv venv .venv 2>&1 | Out-Null
+                Write-Info "Creating venv with default Python..."
+                $venvOutput = & uv venv .venv 2>&1
             }
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "uv venv failed: $venvOutput"
+            }
+            
             Write-Success "Virtual environment created"
         } catch {
             Write-Err "Failed to create virtual environment: $_"
