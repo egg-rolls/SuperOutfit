@@ -11,6 +11,7 @@ Commands:
     recommend   穿搭推荐
     score       搭配评分
     color       色彩协调度
+    inverse     反向推导颜色（给定部分颜色和目标分数，推导补全颜色）
     palette     色卡管理（list/score/train）
     knowledge   知识库（list/show/edit）
     config      配置查看
@@ -130,6 +131,13 @@ def cmd_color(args):
     
     sys.argv = ["color_math.py"] + argv
     color_main()
+
+
+def cmd_inverse(args):
+    """反向推导颜色"""
+    from color_inverse import suggest_colors
+    known = [c.strip() for c in args.known.split(",")]
+    suggest_colors(known, args.target, args.missing, args.top)
 
 
 def cmd_palette(args):
@@ -298,6 +306,7 @@ def main():
   superoutfit weather --city "大连"
   superoutfit score --items item_001,item_003 --occasion 通勤
   superoutfit color --colors "#F5F0E8,#C4A97D,#111111"
+  superoutfit inverse --known "#F5F0E8,#111111" --target 75 --missing 2
   superoutfit palette list --top 10
   superoutfit knowledge show color.md
   superoutfit config
@@ -366,6 +375,14 @@ def main():
     p_color.add_argument("--colors", help="HEX 色值列表（逗号分隔）")
     p_color.set_defaults(func=cmd_color)
     
+    # === inverse ===
+    p_inverse = subparsers.add_parser("inverse", aliases=["inv"], help="反向推导颜色")
+    p_inverse.add_argument("--known", required=True, help="已知颜色（逗号分隔的 HEX）")
+    p_inverse.add_argument("--target", type=float, required=True, help="目标分数")
+    p_inverse.add_argument("--missing", type=int, required=True, help="需要补全的颜色数量")
+    p_inverse.add_argument("--top", type=int, default=5, help="返回前 N 个建议")
+    p_inverse.set_defaults(func=cmd_inverse)
+    
     # === palette ===
     p_palette = subparsers.add_parser("palette", aliases=["p"], help="色卡管理")
     p_palette.add_argument("subcommand", choices=["list", "train", "scrape"], help="子命令")
@@ -400,3 +417,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+def cmd_inverse(args):
+    """反向推导颜色"""
+    from scripts.color_inverse import suggest_colors
+    known = [c.strip() for c in args.known.split(",")]
+    suggest_colors(known, args.target, args.missing, args.top)
+
