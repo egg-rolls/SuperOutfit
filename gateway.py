@@ -19,6 +19,7 @@ SuperOutfit Gateway — 统一服务管理
 import argparse
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -199,7 +200,16 @@ class Gateway:
             dist_dir = frontend_dir / "dist"
             if not dist_dir.exists():
                 print("  构建前端...")
-                subprocess.run(["npm", "run", "build"], cwd=str(frontend_dir))
+                # 检查 npm 是否可用
+                npm_path = shutil.which("npm")
+                if npm_path:
+                    subprocess.run([npm_path, "run", "build"], cwd=str(frontend_dir))
+                else:
+                    print("    ⚠ 未找到 npm，跳过前端构建")
+                    print("    如需前端，请安装 Node.js: https://nodejs.org/")
+                    # 创建空的 dist 目录避免后续错误
+                    dist_dir.mkdir(exist_ok=True)
+                    (dist_dir / "index.html").write_text("<h1>SuperOutfit</h1><p>前端未构建，请安装 Node.js</p>")
             
             cmd = [sys.executable, "-m", "http.server", str(port), "--directory", str(dist_dir)]
         
