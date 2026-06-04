@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "superoutfit"
-version = "3.0.0"
+version = "3.1.0"
 description = "AI 智能穿搭顾问 — MCP + CLI"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,6 +20,15 @@ ml = [
     "scikit-learn>=1.5",
     "matplotlib>=3.9",
 ]
+dev = [
+    "pytest>=8.0",
+    "black>=24.0",
+    "isort>=5.0",
+    "mypy>=1.0",
+]
 
 [project.scripts]
 superoutfit = "superoutfit:main"
+
+[tool.setuptools]
+py-modules = ["superoutfit", "gateway"]
