@@ -195,21 +195,28 @@ class Gateway:
         if self.args.dev:
             # 开发模式：使用 Vite 热重载
             cmd = ["npm", "run", "dev", "--", "--port", str(port)]
+            # Windows 上需要用 shell=True
+            if sys.platform == "win32":
+                cmd = " ".join(cmd)
         else:
             # 生产模式：构建后使用静态文件
             dist_dir = frontend_dir / "dist"
             if not dist_dir.exists():
                 print("  构建前端...")
-                # 检查 npm 是否可用
-                npm_path = shutil.which("npm")
-                if npm_path:
-                    subprocess.run([npm_path, "run", "build"], cwd=str(frontend_dir))
-                else:
-                    print("    ⚠ 未找到 npm，跳过前端构建")
-                    print("    如需前端，请安装 Node.js: https://nodejs.org/")
+                # Windows 上 npm 是 .cmd 文件，需要用 shell=True
+                try:
+                    subprocess.run(
+                        ["npm", "run", "build"],
+                        cwd=str(frontend_dir),
+                        shell=True,
+                        check=True
+                    )
+                except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                    print(f"    ⚠ 前端构建失败: {e}")
+                    print("    如需前端，请确保 Node.js 和 npm 已安装并加入 PATH")
                     # 创建空的 dist 目录避免后续错误
                     dist_dir.mkdir(exist_ok=True)
-                    (dist_dir / "index.html").write_text("<h1>SuperOutfit</h1><p>前端未构建，请安装 Node.js</p>")
+                    (dist_dir / "index.html").write_text("<h1>SuperOutfit</h1><p>前端未构建，请确保 Node.js 已安装</p>")
             
             cmd = [sys.executable, "-m", "http.server", str(port), "--directory", str(dist_dir)]
         
