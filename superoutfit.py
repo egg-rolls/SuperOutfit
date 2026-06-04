@@ -6,6 +6,7 @@ Usage:
     superoutfit <command> <subcommand> [options]
 
 Commands:
+    gateway     启动 Gateway（统一服务管理）
     tui         交互式 TUI 模式
     init        首次使用引导
     wardrobe    衣橱管理（add/list/show/update/delete/stats/record/reindex）
@@ -338,6 +339,22 @@ def cmd_tui(args):
     tui_main()
 
 
+def cmd_gateway(args):
+    """启动 Gateway（统一服务管理）"""
+    from gateway import Gateway
+    
+    # 构造参数
+    class Args:
+        def __init__(self):
+            self.port = args.port
+            self.no_frontend = args.no_frontend
+            self.no_mcp = args.no_mcp
+            self.dev = args.dev
+    
+    gateway = Gateway(Args())
+    gateway.run()
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="superoutfit",
@@ -369,6 +386,14 @@ def main():
     p_init = subparsers.add_parser("init", help="首次使用引导")
     p_init.add_argument("--quick", action="store_true", help="快速模式（使用默认值）")
     p_init.set_defaults(func=cmd_init)
+    
+    # === gateway ===
+    p_gateway = subparsers.add_parser("gateway", aliases=["gw"], help="启动 Gateway（统一服务管理）")
+    p_gateway.add_argument("--port", type=int, default=8001, help="API 端口 (默认: 8001)")
+    p_gateway.add_argument("--no-frontend", action="store_true", help="不启动前端")
+    p_gateway.add_argument("--no-mcp", action="store_true", help="不启动 MCP")
+    p_gateway.add_argument("--dev", action="store_true", help="开发模式")
+    p_gateway.set_defaults(func=cmd_gateway)
     
     # === wardrobe ===
     p_wardrobe = subparsers.add_parser("wardrobe", aliases=["w"], help="衣橱管理")
