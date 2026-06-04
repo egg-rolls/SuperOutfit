@@ -135,9 +135,14 @@ def cmd_color(args):
 
 def cmd_inverse(args):
     """反向推导颜色"""
-    from color_inverse import suggest_colors
-    known = [c.strip() for c in args.known.split(",")]
-    suggest_colors(known, args.target, args.missing, args.top)
+    if args.method == "search":
+        from color_inverse import suggest_colors
+        known = [c.strip() for c in args.known.split(",")]
+        suggest_colors(known, args.target, args.missing, args.top)
+    else:
+        from color_inverse_global import diverse_global_inverse
+        known = [c.strip() for c in args.known.split(",")]
+        diverse_global_inverse(known, args.target, args.missing, args.samples, args.maxiter)
 
 
 def cmd_palette(args):
@@ -380,7 +385,11 @@ def main():
     p_inverse.add_argument("--known", required=True, help="已知颜色（逗号分隔的 HEX）")
     p_inverse.add_argument("--target", type=float, required=True, help="目标分数")
     p_inverse.add_argument("--missing", type=int, required=True, help="需要补全的颜色数量")
-    p_inverse.add_argument("--top", type=int, default=5, help="返回前 N 个建议")
+    p_inverse.add_argument("--method", choices=["search", "global"], default="search", 
+                           help="方法：search=搜索色卡库（快），global=全局优化（慢但可生成新颜色）")
+    p_inverse.add_argument("--top", type=int, default=5, help="搜索法：返回前 N 个建议")
+    p_inverse.add_argument("--samples", type=int, default=3, help="全局法：生成样本数量")
+    p_inverse.add_argument("--maxiter", type=int, default=100, help="全局法：最大迭代次数")
     p_inverse.set_defaults(func=cmd_inverse)
     
     # === palette ===
