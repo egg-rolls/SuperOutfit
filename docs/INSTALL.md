@@ -1,19 +1,17 @@
-# SuperOutfit 安装脚本
+# SuperOutfit 安装说明
 
 ## 一键安装（推荐）
 
 ### Windows (PowerShell)
 
 ```powershell
-# 一键安装
-iex (irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.ps1)
+irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install-simple.ps1 | iex
 ```
 
 ### macOS / Linux (Bash)
 
 ```bash
-# 一键安装
-curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install.sh | bash
 ```
 
 ## 手动安装

@@ -6,10 +6,10 @@
 
 ```bash
 # Windows (PowerShell)
-iex (irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.ps1)
+irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install-simple.ps1 | iex
 
 # macOS / Linux (Bash)
-curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install.sh | bash
 ```
 
 ### 手动安装

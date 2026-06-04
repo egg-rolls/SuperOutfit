@@ -30,7 +30,7 @@
 ### Windows (PowerShell)
 
 ```powershell
-iex (irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install.ps1)
+irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install-simple.ps1 | iex
 ```
 
 ### macOS / Linux (Bash)
