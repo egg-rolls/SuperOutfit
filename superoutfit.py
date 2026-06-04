@@ -317,6 +317,56 @@ def cmd_config(args):
     print(f"  预算: 上衣 {profile.get('budget', {}).get('top', '?')} / 下装 {profile.get('budget', {}).get('bottom', '?')} / 外套 {profile.get('budget', {}).get('outer', '?')}")
 
 
+def cmd_update(args):
+    """更新 SuperOutfit 到最新版本"""
+    import subprocess
+    from pathlib import Path
+    
+    # 获取安装目录
+    install_dir = Path(__file__).parent
+    
+    print("🔄 更新 SuperOutfit...\n")
+    
+    # 检查是否是 git 仓库
+    if not (install_dir / ".git").exists():
+        print("❌ 不是 git 仓库，无法更新")
+        print("   请重新运行安装脚本:")
+        print("   irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install-simple.ps1 | iex")
+        return
+    
+    # 拉取最新代码
+    print("  拉取最新代码...")
+    result = subprocess.run(
+        ["git", "pull", "origin", "master"],
+        cwd=str(install_dir),
+        capture_output=True,
+        text=True
+    )
+    
+    if result.returncode != 0:
+        print(f"❌ 更新失败: {result.stderr}")
+        return
+    
+    if "Already up to date" in result.stdout:
+        print("✓ 已是最新版本")
+    else:
+        print("✓ 代码已更新")
+    
+    # 更新依赖
+    print("\n  更新依赖...")
+    venv_python = install_dir / ".venv" / "Scripts" / "python.exe"
+    if venv_python.exists():
+        subprocess.run(
+            [str(venv_python), "-m", "pip", "install", "-e", ".", "-q"],
+            cwd=str(install_dir),
+            capture_output=True
+        )
+        print("✓ 依赖已更新")
+    
+    print("\n✅ 更新完成！")
+    print("   请重新打开终端以使用新版本")
+
+
 def cmd_version(args):
     """版本信息"""
     print("SuperOutfit v3.1.0")
@@ -371,6 +421,7 @@ def main():
   superoutfit palette list --top 10
   superoutfit knowledge show color.md
   superoutfit config
+  superoutfit update
         """
     )
     
@@ -491,6 +542,10 @@ def main():
                           choices=["config", "stats"], help="子命令")
     p_config.add_argument("--json", action="store_true", help="JSON 输出")
     p_config.set_defaults(func=cmd_config)
+    
+    # === update ===
+    p_update = subparsers.add_parser("update", aliases=["up"], help="更新到最新版本")
+    p_update.set_defaults(func=cmd_update)
     
     args = parser.parse_args()
     
