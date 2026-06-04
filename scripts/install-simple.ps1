@@ -324,6 +324,8 @@ function Install-Venv {
     }
     
     if (-not $venvValid) {
+        $prevEAP = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
         try {
             $venvOutput = ""
             if ($script:PythonVersion) {
@@ -343,6 +345,8 @@ function Install-Venv {
             Write-Err "Failed to create virtual environment: $_"
             Pop-Location
             return $false
+        } finally {
+            $ErrorActionPreference = $prevEAP
         }
     }
     
@@ -359,13 +363,20 @@ function Install-Dependencies {
     
     Push-Location $InstallDir
     
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     try {
-        & uv pip install -e . 2>&1 | Out-Null
+        $output = & uv pip install -e . 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "uv pip install failed: $output"
+        }
         Write-Success "Dependencies installed"
     } catch {
         Write-Err "Failed to install dependencies: $_"
         Pop-Location
         return $false
+    } finally {
+        $ErrorActionPreference = $prevEAP
     }
     
     Pop-Location
