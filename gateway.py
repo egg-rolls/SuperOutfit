@@ -21,6 +21,7 @@ import json
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -30,7 +31,144 @@ from typing import Dict, Optional
 # 项目根目录
 ROOT_DIR = Path(__file__).parent
 
+# PID 文件管理
+PID_FILE = ROOT_DIR / ".superoutfit.pid"
 
+
+def save_pid(api_port: int, frontend_port: int = None, mcp_port: int = None):
+    """保存 Gateway PID 信息"""
+    import psutil
+    
+    pid_data = {
+        "pid": os.getpid(),
+        "started_at": time.time(),
+        "ports": {
+            "api": api_port,
+            "frontend": frontend_port,
+            "mcp": mcp_port,
+        },
+        "services": {}
+    }
+    
+    PID_FILE.write_text(json.dumps(pid_data, indent=2))
+
+
+def update_service_pid(name: str, pid: int):
+    """更新服务 PID"""
+    if PID_FILE.exists():
+        data = json.loads(PID_FILE.read_text())
+        data["services"][name] = pid
+        PID_FILE.write_text(json.dumps(data, indent=2))
+
+
+def load_pid() -> dict:
+    """读取 PID 文件"""
+    if PID_FILE.exists():
+        try:
+            return json.loads(PID_FILE.read_text())
+        except (json.JSONDecodeError, IOError):
+            pass
+    return None
+
+
+def clear_pid():
+    """清除 PID 文件"""
+    if PID_FILE.exists():
+        PID_FILE.unlink(missing_ok=True)
+
+
+def is_process_running(pid: int) -> bool:
+    """检查进程是否在运行"""
+    try:
+        import psutil
+        return psutil.pid_exists(pid)
+    except ImportError:
+        # 备用方案：Windows
+        if sys.platform == "win32":
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            SYNCHRONIZE = 0x00100000
+            handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+            if handle:
+                kernel32.CloseHandle(handle)
+                return True
+        else:
+            # Unix: os.kill(pid, 0)
+            try:
+                os.kill(pid, 0)
+                return True
+            except OSError:
+                pass
+    return False
+
+
+def stop_gateway():
+    """停止 Gateway 进程"""
+    data = load_pid()
+    if not data:
+        return False, "Gateway 未运行"
+    
+    pid = data["pid"]
+    if not is_process_running(pid):
+        clear_pid()
+        return False, "Gateway 进程已退出"
+    
+    try:
+        import psutil
+        parent = psutil.Process(pid)
+        # 先杀子进程
+        for child in parent.children(recursive=True):
+            try:
+                child.terminate()
+            except psutil.NoSuchProcess:
+                pass
+        
+        # 再杀主进程
+        parent.terminate()
+        
+        # 等待退出
+        try:
+            parent.wait(timeout=5)
+        except psutil.TimeoutExpired:
+            parent.kill()
+        
+        clear_pid()
+        return True, "Gateway 已停止"
+    except ImportError:
+        # 没有 psutil，用系统命令
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/F", "/PID", str(pid)], 
+                          capture_output=True)
+        else:
+            os.kill(pid, signal.SIGTERM)
+        
+        clear_pid()
+        return True, "Gateway 已停止"
+    except Exception as e:
+        return False, f"停止失败: {e}"
+
+
+def get_gateway_status() -> dict:
+    """获取 Gateway 状态"""
+    data = load_pid()
+    if not data:
+        return {"running": False, "message": "Gateway 未运行"}
+    
+    pid = data["pid"]
+    if not is_process_running(pid):
+        clear_pid()
+        return {"running": False, "message": "Gateway 进程已退出（PID 文件已清理）"}
+    
+    return {
+        "running": True,
+        "pid": pid,
+        "started_at": data.get("started_at"),
+        "ports": data.get("ports", {}),
+        "services": data.get("services", {}),
+    }
+
+
+# 子进程管理
 class ServiceManager:
     """服务管理器"""
     
@@ -68,6 +206,7 @@ class ServiceManager:
         )
         
         self.services[name] = process
+        update_service_pid(name, process.pid)
         return process
     
     def stop_service(self, name: str):
@@ -93,6 +232,7 @@ class ServiceManager:
         for name in list(self.services.keys()):
             self.stop_service(name)
         
+        clear_pid()
         print("所有服务已停止")
     
     def get_status(self) -> Dict[str, dict]:
@@ -294,6 +434,13 @@ class Gateway:
         self.start_api()
         self.start_frontend()
         self.start_mcp()
+        
+        # 保存 PID
+        save_pid(
+            self.ports["api"],
+            self.ports.get("frontend"),
+            self.ports.get("mcp")
+        )
         
         # 等待服务启动
         self.wait_for_services()

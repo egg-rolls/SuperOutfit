@@ -390,10 +390,33 @@ def cmd_tui(args):
 
 
 def cmd_gateway(args):
-    """启动 Gateway（统一服务管理）"""
-    from gateway import Gateway
+    """Gateway 子命令路由"""
+    action = getattr(args, 'gateway_action', 'up')
     
-    # 构造参数
+    if action == 'up':
+        cmd_gateway_up(args)
+    elif action == 'down':
+        cmd_gateway_down(args)
+    elif action == 'restart':
+        cmd_gateway_restart(args)
+    elif action == 'status':
+        cmd_gateway_status(args)
+    else:
+        cmd_gateway_up(args)
+
+
+def cmd_gateway_up(args):
+    """启动 Gateway"""
+    from gateway import Gateway, load_pid, is_process_running
+    
+    # 检查是否已在运行
+    data = load_pid()
+    if data and is_process_running(data["pid"]):
+        print(f"Gateway 已在运行 (PID: {data['pid']})")
+        print(f"  API: http://localhost:{data.get('ports', {}).get('api', '?')}")
+        print("使用 'superoutfit gateway restart' 重启")
+        return
+    
     class Args:
         def __init__(self):
             self.port = args.port
@@ -405,6 +428,78 @@ def cmd_gateway(args):
     gateway.run()
 
 
+def cmd_gateway_down(args):
+    """停止 Gateway"""
+    from gateway import stop_gateway, load_pid
+    
+    success, message = stop_gateway()
+    print(message)
+    
+    if not success:
+        data = load_pid()
+        if data:
+            print(f"PID: {data['pid']}")
+
+
+def cmd_gateway_restart(args):
+    """重启 Gateway"""
+    from gateway import stop_gateway, load_pid, is_process_running
+    
+    # 先停止
+    data = load_pid()
+    if data and is_process_running(data["pid"]):
+        print("正在停止 Gateway...")
+        success, message = stop_gateway()
+        print(message)
+        
+        if success:
+            import time
+            time.sleep(1)
+    
+    # 再启动
+    cmd_gateway_up(args)
+
+
+def cmd_gateway_status(args):
+    """查看 Gateway 状态"""
+    from gateway import get_gateway_status, load_pid
+    
+    status = get_gateway_status()
+    
+    if not status["running"]:
+        print(f"Gateway 状态: {status['message']}")
+        return
+    
+    print("Gateway 状态: 运行中")
+    print(f"  PID: {status['pid']}")
+    
+    # 显示运行时间
+    if status.get("started_at"):
+        import time
+        elapsed = int(time.time() - status["started_at"])
+        if elapsed < 60:
+            time_str = f"{elapsed} 秒"
+        elif elapsed < 3600:
+            time_str = f"{elapsed // 60} 分钟"
+        else:
+            time_str = f"{elapsed // 3600} 小时 {(elapsed % 3600) // 60} 分钟"
+        print(f"  运行时间: {time_str}")
+    
+    # 显示端口
+    ports = status.get("ports", {})
+    if ports.get("api"):
+        print(f"  API: http://localhost:{ports['api']}")
+    if ports.get("frontend"):
+        print(f"  前端: http://localhost:{ports['frontend']}")
+    if ports.get("mcp"):
+        print(f"  MCP: http://localhost:{ports['mcp']}")
+    
+    # 显示服务
+    services = status.get("services", {})
+    if services:
+        print(f"  服务: {', '.join(services.keys())}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="superoutfit",
@@ -412,6 +507,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
+  superoutfit gateway up                # 启动 Gateway
+  superoutfit gateway down              # 停止 Gateway
+  superoutfit gateway restart           # 重启 Gateway
+  superoutfit gateway status            # 查看状态
   superoutfit wardrobe add --type "上衣" --color "#F5F0E8"
   superoutfit wardrobe list --category "上衣"
   superoutfit weather --city "大连"
@@ -439,11 +538,14 @@ def main():
     p_init.set_defaults(func=cmd_init)
     
     # === gateway ===
-    p_gateway = subparsers.add_parser("gateway", aliases=["gw"], help="启动 Gateway（统一服务管理）")
+    p_gateway = subparsers.add_parser("gateway", aliases=["gw"], help="Gateway 服务管理")
     p_gateway.add_argument("--port", type=int, default=8001, help="API 端口 (默认: 8001)")
     p_gateway.add_argument("--no-frontend", action="store_true", help="不启动前端")
     p_gateway.add_argument("--no-mcp", action="store_true", help="不启动 MCP")
     p_gateway.add_argument("--dev", action="store_true", help="开发模式")
+    p_gateway.add_argument("gateway_action", nargs="?", default="up", 
+                          choices=["up", "down", "restart", "status"],
+                          help="Gateway 操作: up(启动), down(停止), restart(重启), status(状态)")
     p_gateway.set_defaults(func=cmd_gateway)
     
     # === wardrobe ===
