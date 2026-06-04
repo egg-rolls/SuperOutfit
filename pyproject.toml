@@ -29,6 +29,7 @@ dev = [
 
 [project.scripts]
 superoutfit = "superoutfit:main"
+spof = "superoutfit:main"
 
 [tool.setuptools]
 py-modules = ["superoutfit", "gateway"]

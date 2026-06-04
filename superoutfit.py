@@ -507,20 +507,20 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  superoutfit gateway up                # 启动 Gateway
-  superoutfit gateway down              # 停止 Gateway
-  superoutfit gateway restart           # 重启 Gateway
-  superoutfit gateway status            # 查看状态
-  superoutfit wardrobe add --type "上衣" --color "#F5F0E8"
-  superoutfit wardrobe list --category "上衣"
-  superoutfit weather --city "大连"
-  superoutfit score --items item_001,item_003 --occasion 通勤
-  superoutfit color --colors "#F5F0E8,#C4A97D,#111111"
-  superoutfit inverse --known "#F5F0E8,#111111" --target 75 --missing 2
-  superoutfit palette list --top 10
-  superoutfit knowledge show color.md
-  superoutfit config
-  superoutfit update
+  spof gateway up                      # 启动 Gateway
+  spof gateway down                    # 停止 Gateway
+  spof gateway restart                 # 重启 Gateway
+  spof gateway status                  # 查看状态
+  spof wardrobe add --type "上衣" --color "#F5F0E8"
+  spof wardrobe list --category "上衣"
+  spof weather --city "大连"
+  spof score --items item_001,item_003 --occasion 通勤
+  spof color --colors "#F5F0E8,#C4A97D,#111111"
+  spof inverse --known "#F5F0E8,#111111" --target 75 --missing 2
+  spof palette list --top 10
+  spof knowledge show color.md
+  spof config
+  spof update
         """
     )
     
