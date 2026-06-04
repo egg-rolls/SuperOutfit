@@ -21,7 +21,8 @@ try {
 
 $RepoUrl = "https://github.com/egg-rolls/SuperOutfit.git"
 $InstallDir = "$env:LOCALAPPDATA\SuperOutfit"
-$PythonVersion = "3.11"
+# Use system Python version (3.11+), don't hardcode
+$PythonVersion = ""
 
 # ============================================================================
 # Helper functions
@@ -105,30 +106,28 @@ function Install-Python {
     Write-Step "Checking Python"
     
     # Check if Python 3.11+ is available
-    $pythonCmd = $null
     foreach ($cmd in @("python", "python3")) {
         if (Get-Command $cmd -ErrorAction SilentlyContinue) {
             $ver = & $cmd --version 2>&1
-            if ($ver -match "3\.(\d+)") {
+            if ($ver -match "3\.(\d+)\.(\d+)") {
                 $minor = [int]$Matches[1]
                 if ($minor -ge 11) {
-                    $pythonCmd = $cmd
+                    # Store the full version for uv
+                    $script:PythonVersion = "$($Matches[0]) -replace 'Python ', ''"
+                    $script:PythonVersion = "3.$minor"
                     Write-Success "Python $ver"
-                    break
+                    return $true
                 }
             }
         }
     }
     
-    if ($pythonCmd) {
-        return $true
-    }
-    
     # Install Python via uv
-    Write-Info "Installing Python $PythonVersion..."
+    Write-Info "Installing Python 3.11..."
     try {
-        uv python install $PythonVersion
-        Write-Success "Python $PythonVersion installed"
+        uv python install 3.11
+        $script:PythonVersion = "3.11"
+        Write-Success "Python 3.11 installed"
         return $true
     } catch {
         Write-Err "Failed to install Python: $_"
@@ -328,7 +327,11 @@ function Install-Venv {
     
     if (-not $venvValid) {
         try {
-            & uv venv .venv --python $PythonVersion 2>&1 | Out-Null
+            if ($script:PythonVersion) {
+                & uv venv .venv --python $script:PythonVersion 2>&1 | Out-Null
+            } else {
+                & uv venv .venv 2>&1 | Out-Null
+            }
             Write-Success "Virtual environment created"
         } catch {
             Write-Err "Failed to create virtual environment: $_"
