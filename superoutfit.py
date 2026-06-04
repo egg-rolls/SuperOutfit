@@ -21,6 +21,7 @@ Commands:
 """
 
 import argparse
+import subprocess
 import sys
 import os
 import json
@@ -389,6 +390,16 @@ def cmd_tui(args):
     tui_main()
 
 
+def cmd_setup(args):
+    """快速设置 Skill"""
+    setup_script = Path(__file__).parent / "scripts" / "setup_skill.py"
+    if not setup_script.exists():
+        print("错误：找不到 setup_skill.py")
+        return
+    
+    subprocess.run([sys.executable, str(setup_script)])
+
+
 def cmd_gateway(args):
     """Gateway 子命令路由"""
     action = getattr(args, 'gateway_action', 'up')
@@ -507,6 +518,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
+  spof setup                           # 快速设置 Skill
   spof gateway up                      # 启动 Gateway
   spof gateway down                    # 停止 Gateway
   spof gateway restart                 # 重启 Gateway
@@ -536,6 +548,10 @@ def main():
     p_init = subparsers.add_parser("init", help="首次使用引导")
     p_init.add_argument("--quick", action="store_true", help="快速模式（使用默认值）")
     p_init.set_defaults(func=cmd_init)
+    
+    # === setup ===
+    p_setup = subparsers.add_parser("setup", help="快速设置 Skill")
+    p_setup.set_defaults(func=cmd_setup)
     
     # === gateway ===
     p_gateway = subparsers.add_parser("gateway", aliases=["gw"], help="Gateway 服务管理")

@@ -1,10 +1,8 @@
 {
   "mcpServers": {
     "superoutfit": {
-      "command": "D:\\Python\\python.exe",
-      "args": [
-        "D:\\Application\\SuperOutfit\\server.py"
-      ]
+      "command": "python",
+      "args": ["D:\Application\SuperOutfit\server.py"]
     }
   }
 }
