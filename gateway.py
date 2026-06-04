@@ -37,8 +37,6 @@ PID_FILE = ROOT_DIR / ".superoutfit.pid"
 
 def save_pid(api_port: int, frontend_port: int = None, mcp_port: int = None):
     """保存 Gateway PID 信息"""
-    import psutil
-    
     pid_data = {
         "pid": os.getpid(),
         "started_at": time.time(),
@@ -79,26 +77,20 @@ def clear_pid():
 
 def is_process_running(pid: int) -> bool:
     """检查进程是否在运行"""
-    try:
-        import psutil
-        return psutil.pid_exists(pid)
-    except ImportError:
-        # 备用方案：Windows
-        if sys.platform == "win32":
-            import ctypes
-            kernel32 = ctypes.windll.kernel32
-            SYNCHRONIZE = 0x00100000
-            handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
-            if handle:
-                kernel32.CloseHandle(handle)
-                return True
-        else:
-            # Unix: os.kill(pid, 0)
-            try:
-                os.kill(pid, 0)
-                return True
-            except OSError:
-                pass
+    if sys.platform == "win32":
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        SYNCHRONIZE = 0x00100000
+        handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+        if handle:
+            kernel32.CloseHandle(handle)
+            return True
+    else:
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            pass
     return False
 
 
@@ -114,32 +106,12 @@ def stop_gateway():
         return False, "Gateway 进程已退出"
     
     try:
-        import psutil
-        parent = psutil.Process(pid)
-        # 先杀子进程
-        for child in parent.children(recursive=True):
-            try:
-                child.terminate()
-            except psutil.NoSuchProcess:
-                pass
-        
-        # 再杀主进程
-        parent.terminate()
-        
-        # 等待退出
-        try:
-            parent.wait(timeout=5)
-        except psutil.TimeoutExpired:
-            parent.kill()
-        
-        clear_pid()
-        return True, "Gateway 已停止"
-    except ImportError:
-        # 没有 psutil，用系统命令
         if sys.platform == "win32":
-            subprocess.run(["taskkill", "/F", "/PID", str(pid)], 
+            # Windows: 用 taskkill 杀进程树
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], 
                           capture_output=True)
         else:
+            # Unix: 发送 SIGTERM
             os.kill(pid, signal.SIGTERM)
         
         clear_pid()
