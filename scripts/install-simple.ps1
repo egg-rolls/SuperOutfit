@@ -313,9 +313,20 @@ function Install-Venv {
     
     Push-Location $InstallDir
     
+    $venvValid = $false
     if (Test-Path ".venv") {
-        Write-Info "Virtual environment already exists"
-    } else {
+        # Check if venv is valid
+        if (Test-Path ".venv\pyvenv.cfg") {
+            $venvValid = $true
+            Write-Info "Virtual environment already exists"
+        } else {
+            Write-Warn "Virtual environment is corrupted (missing pyvenv.cfg)"
+            Write-Info "Removing and recreating..."
+            Remove-Item -Recurse -Force ".venv" -ErrorAction SilentlyContinue
+        }
+    }
+    
+    if (-not $venvValid) {
         try {
             & uv venv .venv --python $PythonVersion 2>&1 | Out-Null
             Write-Success "Virtual environment created"
