@@ -5,31 +5,18 @@
 # Uses uv for fast Python provisioning and package management.
 #
 # Usage:
-#   iex (irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.ps1)
+#   irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install.ps1 | iex
 #
 # Or download and run:
 #   .\install.ps1
 #
 # ============================================================================
 
-param(
-    [switch]$SkipSetup,
-    [string]$Branch = "main",
-    [string]$InstallDir = "$env:LOCALAPPDATA\SuperOutfit",
-    [switch]$NonInteractive
-)
-
-$ErrorActionPreference = "Stop"
+# Don't use param() - it doesn't work with iex
+# Don't use $ErrorActionPreference = "Stop" - it causes silent exits
 
 # Suppress progress bar for faster downloads
 $ProgressPreference = "SilentlyContinue"
-
-# Force UTF-8 output
-try {
-    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-} catch {
-    # Some constrained hosts disallow encoding mutation
-}
 
 # ============================================================================
 # Configuration
@@ -37,6 +24,7 @@ try {
 
 $RepoUrl = "https://github.com/egg-rolls/SuperOutfit.git"
 $PythonVersion = "3.11"
+$InstallDir = "$env:LOCALAPPDATA\SuperOutfit"
 
 # ============================================================================
 # Helper Functions
@@ -44,7 +32,8 @@ $PythonVersion = "3.11"
 
 function Write-Step {
     param([string]$Message)
-    Write-Host "`n=> $Message" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "=> $Message" -ForegroundColor Cyan
 }
 
 function Write-Success {
@@ -77,22 +66,28 @@ function Install-Uv {
     
     if (Test-Command "uv") {
         Write-Success "uv is already installed"
-        return
+        return $true
     }
     
     Write-Step "Installing uv..."
     
-    # Install uv
-    irm https://astral.sh/uv/install.ps1 | iex
-    
-    # Refresh PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-    
-    if (Test-Command "uv") {
-        Write-Success "uv installed successfully"
-    } else {
-        Write-Error "Failed to install uv"
-        exit 1
+    try {
+        # Install uv
+        irm https://astral.sh/uv/install.ps1 | iex
+        
+        # Refresh PATH
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        
+        if (Test-Command "uv") {
+            Write-Success "uv installed successfully"
+            return $true
+        } else {
+            Write-Error "Failed to install uv"
+            return $false
+        }
+    } catch {
+        Write-Error "Failed to install uv: $_"
+        return $false
     }
 }
 
@@ -104,19 +99,26 @@ function Install-Python {
         $version = python --version 2>&1
         if ($version -match "3\.1[1-9]") {
             Write-Success "Python $version is available"
-            return
+            return $true
         }
     }
     
     # Try to install Python via uv
     Write-Step "Installing Python $PythonVersion via uv..."
-    uv python install $PythonVersion
     
-    if ($LASTEXITCODE -eq 0) {
-        Write-Success "Python $PythonVersion installed"
-    } else {
-        Write-Error "Failed to install Python"
-        exit 1
+    try {
+        uv python install $PythonVersion
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Python $PythonVersion installed"
+            return $true
+        } else {
+            Write-Error "Failed to install Python"
+            return $false
+        }
+    } catch {
+        Write-Error "Failed to install Python: $_"
+        return $false
     }
 }
 
@@ -126,80 +128,105 @@ function Clone-Repository {
     # Remove existing installation if present
     if (Test-Path $InstallDir) {
         Write-Warning "Existing installation found at $InstallDir"
-        if (-not $NonInteractive) {
-            $response = Read-Host "Remove and reinstall? (y/N)"
-            if ($response -ne "y" -and $response -ne "Y") {
-                Write-Host "Installation cancelled."
-                exit 0
-            }
+        Write-Host "  Removing old installation..."
+        
+        try {
+            Remove-Item -Recurse -Force $InstallDir
+        } catch {
+            Write-Error "Failed to remove old installation: $_"
+            return $false
         }
-        Remove-Item -Recurse -Force $InstallDir
     }
     
     # Clone repository
-    git clone --depth 1 -b $Branch $RepoUrl $InstallDir
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Success "Repository cloned to $InstallDir"
-    } else {
-        Write-Error "Failed to clone repository"
-        exit 1
+    try {
+        git clone --depth 1 "$RepoUrl" "$InstallDir" 2>&1 | Out-Null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Repository cloned to $InstallDir"
+            return $true
+        } else {
+            Write-Error "Failed to clone repository"
+            return $false
+        }
+    } catch {
+        Write-Error "Failed to clone repository: $_"
+        return $false
     }
 }
 
 function Setup-Venv {
     Write-Step "Setting up virtual environment..."
     
-    Push-Location $InstallDir
-    
-    # Create virtual environment
-    uv venv
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Success "Virtual environment created"
-    } else {
-        Write-Error "Failed to create virtual environment"
+    try {
+        Push-Location $InstallDir
+        
+        # Create virtual environment
+        uv venv 2>&1 | Out-Null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Virtual environment created"
+            Pop-Location
+            return $true
+        } else {
+            Write-Error "Failed to create virtual environment"
+            Pop-Location
+            return $false
+        }
+    } catch {
+        Write-Error "Failed to create virtual environment: $_"
         Pop-Location
-        exit 1
+        return $false
     }
-    
-    Pop-Location
 }
 
 function Install-Dependencies {
     Write-Step "Installing dependencies..."
     
-    Push-Location $InstallDir
-    
-    # Install package in editable mode
-    uv pip install -e .
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Success "Dependencies installed"
-    } else {
-        Write-Error "Failed to install dependencies"
+    try {
+        Push-Location $InstallDir
+        
+        # Install package in editable mode
+        uv pip install -e . 2>&1 | Out-Null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Dependencies installed"
+            Pop-Location
+            return $true
+        } else {
+            Write-Error "Failed to install dependencies"
+            Pop-Location
+            return $false
+        }
+    } catch {
+        Write-Error "Failed to install dependencies: $_"
         Pop-Location
-        exit 1
+        return $false
     }
-    
-    Pop-Location
 }
 
 function Initialize-Data {
     Write-Step "Initializing data..."
     
-    Push-Location $InstallDir
-    
-    # Run init command
-    & ".\.venv\Scripts\superoutfit.exe" init --quick
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Success "Data initialized"
-    } else {
-        Write-Warning "Data initialization skipped (may already exist)"
+    try {
+        Push-Location $InstallDir
+        
+        # Run init command
+        $superoutfitExe = ".\.venv\Scripts\superoutfit.exe"
+        if (Test-Path $superoutfitExe) {
+            & $superoutfitExe init --quick 2>&1 | Out-Null
+            Write-Success "Data initialized"
+        } else {
+            Write-Warning "superoutfit.exe not found, skipping initialization"
+        }
+        
+        Pop-Location
+        return $true
+    } catch {
+        Write-Warning "Data initialization skipped: $_"
+        Pop-Location
+        return $true
     }
-    
-    Pop-Location
 }
 
 function Add-ToPath {
@@ -210,47 +237,30 @@ function Add-ToPath {
     
     # Check if already in PATH
     $currentPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
-    if ($currentPath -contains $scriptsDir) {
+    if ($currentPath -like "*$scriptsDir*") {
         Write-Success "Already in PATH"
-        return
+        return $true
     }
     
-    # Add to user PATH
-    $newPath = "$currentPath;$scriptsDir"
-    [System.Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-    
-    # Refresh current session PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-    
-    Write-Success "Added to PATH"
-}
-
-function Create-Shortcut {
-    Write-Step "Creating desktop shortcut..."
-    
-    $shortcutPath = "$env:USERPROFILE\Desktop\SuperOutfit.lnk"
-    $targetPath = "$InstallDir\.venv\Scripts\superoutfit.exe"
-    
-    # Check if shortcut already exists
-    if (Test-Path $shortcutPath) {
-        Write-Success "Desktop shortcut already exists"
-        return
+    try {
+        # Add to user PATH
+        $newPath = "$currentPath;$scriptsDir"
+        [System.Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        
+        # Refresh current session PATH
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        
+        Write-Success "Added to PATH"
+        return $true
+    } catch {
+        Write-Warning "Failed to add to PATH: $_"
+        Write-Host "  Please manually add to PATH: $scriptsDir"
+        return $true
     }
-    
-    # Create shortcut
-    $shell = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath = "cmd.exe"
-    $shortcut.Arguments = "/k cd /d $InstallDir && .venv\Scripts\activate"
-    $shortcut.WorkingDirectory = $InstallDir
-    $shortcut.Description = "SuperOutfit - AI Fashion Advisor"
-    $shortcut.Save()
-    
-    Write-Success "Desktop shortcut created"
 }
 
 function Print-Summary {
-    Write-Host "`n" -NoNewline
+    Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host "  SuperOutfit installed successfully!" -ForegroundColor Green
     Write-Host "============================================================" -ForegroundColor Green
@@ -258,17 +268,13 @@ function Print-Summary {
     Write-Host "  Installation directory: $InstallDir"
     Write-Host ""
     Write-Host "  Quick start:"
-    Write-Host "    1. Open a new terminal"
+    Write-Host "    1. Open a NEW terminal (important!)"
     Write-Host "    2. Run: superoutfit --help"
     Write-Host "    3. Run: superoutfit init"
     Write-Host "    4. Run: superoutfit gateway"
     Write-Host ""
-    Write-Host "  Or use the desktop shortcut."
-    Write-Host ""
-    Write-Host "  Documentation:"
-    Write-Host "    - README.md"
-    Write-Host "    - docs/INSTALL.md"
-    Write-Host "    - docs/CLI.md"
+    Write-Host "  Or use interactive mode:"
+    Write-Host "    superoutfit tui"
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green
 }
@@ -278,7 +284,7 @@ function Print-Summary {
 # ============================================================================
 
 function Main {
-    Write-Host "`n" -NoNewline
+    Write-Host ""
     Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host "  SuperOutfit Installer" -ForegroundColor Cyan
     Write-Host "  AI Fashion Advisor" -ForegroundColor Cyan
@@ -291,38 +297,65 @@ function Main {
     if (-not (Test-Command "git")) {
         Write-Error "Git is required but not installed."
         Write-Host "  Please install Git from: https://git-scm.com/"
-        exit 1
+        Write-Host ""
+        Write-Host "Press any key to exit..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return
     }
     Write-Success "Git is available"
     
     # Install uv
-    Install-Uv
+    if (-not (Install-Uv)) {
+        Write-Host ""
+        Write-Host "Installation failed. Press any key to exit..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return
+    }
     
     # Install Python
-    Install-Python
+    if (-not (Install-Python)) {
+        Write-Host ""
+        Write-Host "Installation failed. Press any key to exit..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return
+    }
     
     # Clone repository
-    Clone-Repository
+    if (-not (Clone-Repository)) {
+        Write-Host ""
+        Write-Host "Installation failed. Press any key to exit..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return
+    }
     
     # Setup virtual environment
-    Setup-Venv
+    if (-not (Setup-Venv)) {
+        Write-Host ""
+        Write-Host "Installation failed. Press any key to exit..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return
+    }
     
     # Install dependencies
-    Install-Dependencies
+    if (-not (Install-Dependencies)) {
+        Write-Host ""
+        Write-Host "Installation failed. Press any key to exit..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return
+    }
     
     # Initialize data
-    if (-not $SkipSetup) {
-        Initialize-Data
-    }
+    Initialize-Data
     
     # Add to PATH
     Add-ToPath
     
-    # Create shortcut
-    Create-Shortcut
-    
     # Print summary
     Print-Summary
+    
+    Write-Host ""
+    Write-Host "Press any key to exit..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
 # Run installation
