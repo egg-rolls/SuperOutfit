@@ -183,15 +183,37 @@ def cmd_init(args):
 
 def cmd_update(args):
     install_dir = Path(__file__).parent
-    print("更新 SuperOutfit...")
+    print("更新 SuperOutfit...\n")
     if not (install_dir / ".git").exists():
         print("不是 git 仓库")
         return
-    result = subprocess.run(["git", "pull", "origin", "master"],
-                            cwd=str(install_dir), capture_output=True, text=True)
+
+    def git(*cmds):
+        return subprocess.run(["git"] + list(cmds),
+                              cwd=str(install_dir), capture_output=True, text=True)
+
+    # Stash local changes
+    stash_result = git("stash", "push", "-m", "auto-stash before update")
+    has_stash = "No local changes" not in stash_result.stdout
+
+    # Clean untracked files that would block merge
+    git("clean", "-fd", "scripts/")
+
+    # Pull
+    result = git("pull", "origin", "master")
     if result.returncode != 0:
         print(f"更新失败: {result.stderr}")
+        if has_stash:
+            git("stash", "pop")
         return
+
+    # Try to restore stashed changes
+    if has_stash:
+        pop = git("stash", "pop")
+        if pop.returncode != 0:
+            print("本地修改与远程冲突，已丢弃本地修改（远程版本为准）")
+            git("stash", "drop")
+
     print("已是最新" if "Already up to date" in result.stdout else "代码已更新")
 
 
