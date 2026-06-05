@@ -10,6 +10,12 @@ SuperOutfit CLI — AI 智能穿搭顾问
     spof data   数据导入导出
     spof info    系统信息
     spof gateway 网关管理（up/down/status）
+
+基础设施:
+    spof update    更新应用
+    spof uninstall 卸载应用
+    spof tui       交互模式
+    spof init      首次引导
 """
 
 import argparse
@@ -170,6 +176,91 @@ def cmd_gateway(args):
 def cmd_tui(args):
     from tui import main as tui_main
     tui_main()
+
+
+def cmd_uninstall(args):
+    """卸载 SuperOutfit"""
+    import shutil
+    install_dir = Path(__file__).parent.resolve()
+
+    print("SuperOutfit 卸载程序\n")
+    print(f"  安装目录: {install_dir}")
+
+    # Ask keep data
+    if args.keep_data:
+        keep = True
+    elif args.yes:
+        keep = False
+    else:
+        ans = input("\n是否保留衣橱数据？(Y/n): ").strip().lower()
+        keep = ans != "n"
+
+    if keep:
+        print("\n模式: 卸载程序，保留 data/ 目录")
+    else:
+        print("\n模式: 完全删除（包括数据）")
+        if not args.yes:
+            confirm = input("确认删除所有数据？(y/N): ").strip().lower()
+            if confirm != "y":
+                print("已取消")
+                return
+
+    # 1. Remove hermes skill
+    skill_dir = Path.home() / "AppData" / "Local" / "hermes" / "skills" / "productivity" / "superoutfit"
+    if skill_dir.exists():
+        try:
+            shutil.rmtree(skill_dir)
+            print(f"  [OK] 已删除 Hermes skill")
+        except Exception as e:
+            print(f"  [!!] 删除 skill 失败: {e}")
+
+    # 2. Remove installation
+    if keep:
+        # Remove everything except data/ and .git/
+        removed = []
+        for item in install_dir.iterdir():
+            if item.name in ("data", ".git"):
+                continue
+            try:
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+                removed.append(item.name)
+            except Exception as e:
+                print(f"  [!!] 删除 {item.name} 失败: {e}")
+        print(f"  [OK] 已删除程序文件 ({len(removed)} 项)")
+        print(f"  [OK] 已保留数据目录: {install_dir / 'data'}")
+    else:
+        try:
+            shutil.rmtree(install_dir)
+            print(f"  [OK] 已删除全部: {install_dir}")
+        except Exception as e:
+            print(f"  [!!] 删除失败: {e}")
+            return
+
+    # 3. Clean up PATH (Windows)
+    if os.name == "nt":
+        try:
+            import winreg
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment", 0, winreg.KEY_ALL_ACCESS)
+            try:
+                path_val, _ = winreg.QueryValueEx(key, "Path")
+                install_str = str(install_dir)
+                new_path = ";".join(p for p in path_val.split(";") if install_str not in p)
+                if new_path != path_val:
+                    winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, new_path)
+                    print("  [OK] 已从 PATH 中移除")
+            except FileNotFoundError:
+                pass
+            winreg.CloseKey(key)
+        except Exception:
+            pass
+
+    print("\n卸载完成！")
+    if keep:
+        print(f"数据保留在: {install_dir / 'data'}")
+        print("如需重新安装: git clone https://github.com/egg-rolls/SuperOutfit.git")
 
 
 def cmd_init(args):
@@ -352,6 +443,11 @@ def main():
 
     p = subparsers.add_parser("update", help="更新 SuperOutfit")
     p.set_defaults(func=cmd_update)
+
+    p = subparsers.add_parser("uninstall", help="卸载 SuperOutfit")
+    p.add_argument("--keep-data", action="store_true", help="保留衣橱数据")
+    p.add_argument("-y", "--yes", action="store_true", help="跳过确认")
+    p.set_defaults(func=cmd_uninstall)
 
     args = parser.parse_args()
 
