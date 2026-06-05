@@ -43,7 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/script
 
 ```bash
 spof --help            # 查看所有命令
-spof system gateway    # 启动服务（API + 前端 + MCP）
+spof gateway    # 启动服务（API + 前端 + MCP）
 ```
 
 > 📖 详细安装说明见 [docs/INSTALL.md](docs/INSTALL.md)
@@ -116,7 +116,7 @@ spof system gateway    # 启动服务（API + 前端 + MCP）
 
 ```bash
 # 启动所有服务（API + 前端 + MCP）
-spof system gateway
+spof gateway
 
 # 浏览器打开 http://localhost:8002
 ```
@@ -154,7 +154,7 @@ spof wear add --items item_001,item_003 --occasion "通勤"
 
 ```bash
 # 启动后端（不含 MCP）
-spof system gateway --no-mcp
+spof gateway --no-mcp
 
 # 浏览器打开 http://localhost:8002
 ```
@@ -163,7 +163,7 @@ spof system gateway --no-mcp
 
 ```bash
 # 启动 MCP Server（不含前端）
-spof system gateway --no-frontend
+spof gateway --no-frontend
 
 # 在 AI Agent 中配置 MCP Server 路径
 # 然后对 AI 说：\"帮我推荐今天的穿搭\"
@@ -204,10 +204,10 @@ spof data export                       # 导出数据
 spof data import                       # 导入数据
 
 # === 系统管理 ===
-spof system info                       # 查看系统信息
-spof system gateway up                 # 启动服务
-spof system gateway down               # 停止服务
-spof system gateway status             # 查看服务状态
+spof info                       # 查看系统信息
+spof gateway up                 # 启动服务
+spof gateway down               # 停止服务
+spof gateway status             # 查看服务状态
 
 # === 应用更新 ===
 spof update                            # git pull 更新
@@ -330,7 +330,7 @@ uv run python scripts/export.py
 
 ```bash
 # 启动 MCP Server
-spof system gateway --no-frontend
+spof gateway --no-frontend
 
 # 在 AI Agent 中配置 MCP Server 路径
 # 然后对 AI 说：\"帮我推荐今天的穿搭\"

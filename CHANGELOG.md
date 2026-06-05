@@ -36,7 +36,7 @@
 - **`wardrobe_ops.py` 重写** — 支持 `--wishlist` 切换目标目录
 - **`superoutfit.py` 重写** — 6 个命令 + 基础设施（gateway/tui/init/update）
 - **色彩工具合并** — `color score` + `color inverse` 合入 `spof color`
-- **系统管理合并** — `config` + `gateway` + `skill` + `knowledge` 合入 `spof system`
+- **系统管理合并** — `config` + `gateway` + `skill` + `knowledge` 合入 `spof info` 和 `spof gateway`
 - **搜索改用 `search_files`** — 不再自建搜索命令，用 Hermes 内置 ripgrep
 
 ### 移除

@@ -88,7 +88,7 @@ spof color inverse --known '#F5F0E8' --target 75 --missing 1  # 反向推导
 # 其他
 spof weather [--city X]                      # 天气查询
 spof data export | import                    # 数据导出/导入
-spof system info | gateway up/down/status    # 系统信息/网关管理
+spof info | gateway up/down/status    # 系统信息/网关管理
 spof update                                  # 更新（git pull）
 ```
 

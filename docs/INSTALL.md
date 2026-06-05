@@ -99,7 +99,7 @@ spof color inverse --known '#F5F0E8' --target 75 --missing 1
 
 # 天气 & 系统
 spof weather [--city X]
-spof system info
+spof info
 spof update
 ```
 
@@ -107,13 +107,13 @@ spof update
 
 ```bash
 # 启动所有服务（API + 前端 + MCP）
-spof system gateway up
+spof gateway up
 
 # 查看状态
-spof system gateway status
+spof gateway status
 
 # 停止
-spof system gateway down
+spof gateway down
 ```
 
 ## 配置文件

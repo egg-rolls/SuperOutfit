@@ -19,7 +19,7 @@ git clone https://github.com/egg-rolls/SuperOutfit.git
 cd SuperOutfit
 uv venv
 uv pip install -e .
-spof system info
+spof info
 ```
 
 ## 使用方式
@@ -213,18 +213,18 @@ spof data import                           # 导入数据
 
 ## 系统管理
 
-### `spof system info` — 系统信息
+### `spof info` — 系统信息
 
 ```bash
-spof system info                           # 显示版本、数据路径、衣物数量等
+spof info                           # 显示版本、数据路径、衣物数量等
 ```
 
-### `spof system gateway` — 服务管理
+### `spof gateway` — 服务管理
 
 ```bash
-spof system gateway up                     # 启动所有服务
-spof system gateway down                   # 停止所有服务
-spof system gateway status                 # 查看服务状态
+spof gateway up                     # 启动所有服务
+spof gateway down                   # 停止所有服务
+spof gateway status                 # 查看服务状态
 ```
 
 ### `spof update` — 更新应用
@@ -262,8 +262,8 @@ spof update                                # git pull 拉取最新代码
 | `spof weather` | 天气查询 | `spof weather --city 大连` |
 | `spof data export` | 导出数据 | `spof data export` |
 | `spof data import` | 导入数据 | `spof data import` |
-| `spof system info` | 系统信息 | `spof system info` |
-| `spof system gateway` | 服务管理 | `spof system gateway up` |
+| `spof info` | 系统信息 | `spof info` |
+| `spof gateway` | 服务管理 | `spof gateway up` |
 | `spof update` | 更新应用 | `spof update` |
 
 ---
@@ -277,10 +277,10 @@ spof update                                # git pull 拉取最新代码
 curl -fsSL https://raw.githubusercontent.com/egg-rolls/SuperOutfit/main/scripts/install.sh | bash
 
 # 查看系统信息
-spof system info
+spof info
 
 # 启动服务
-spof system gateway up
+spof gateway up
 # 浏览器打开 http://localhost:32201
 ```
 
@@ -331,7 +331,7 @@ spof color inverse --known '#F5F0E8' --target 75 --missing 1
 spof weather --city 大连
 
 # 启动服务后通过前端或 AI 获取穿搭推荐
-spof system gateway up
+spof gateway up
 ```
 
 ---
@@ -391,7 +391,7 @@ netstat -ano | findstr :32200  # Windows
 lsof -i :32200                 # macOS/Linux
 
 # 查看状态
-spof system gateway status
+spof gateway status
 ```
 
 ### Q: --wishlist 和默认有什么区别？
