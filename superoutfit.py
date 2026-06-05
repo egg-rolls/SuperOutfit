@@ -1,23 +1,14 @@
 #!/usr/bin/env python3
 """
-SuperOutfit CLI — AI 智能穿搭顾问命令行工具
+SuperOutfit CLI — AI 智能穿搭顾问
 
-Usage:
-    superoutfit <command> <subcommand> [options]
-
-Commands:
-    gateway     启动 Gateway（统一服务管理）
-    tui         交互式 TUI 模式
-    init        首次使用引导
-    wardrobe    衣橱管理（add/list/show/update/delete/stats/record/reindex）
-    weather     天气查询
-    recommend   穿搭推荐（recommend/today）
-    score       搭配评分
-    color       色彩协调度（score/show）
-    inverse     反向推导颜色
-    palette     色卡管理（list/score/train）
-    knowledge   知识库（list/show/edit）
-    config      配置查看（config/stats）
+6 个 AI 命令:
+    spof        衣橱/购物清单 CRUD（add/list/show/edit/delete）
+    spof wear   穿着管理（add/wash/check/report）
+    spof color  色彩工具（score/inverse）
+    spof weather 天气查询
+    spof data   数据导入导出
+    spof system 系统管理（gateway/info）
 """
 
 import argparse
@@ -27,693 +18,351 @@ import os
 import json
 from pathlib import Path
 
-# 确保 scripts/ 在导入路径中
+# rich
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
+    console = Console()
+except ImportError:
+    class SimpleConsole:
+        def print(self, *args, **kwargs):
+            print(*args)
+    console = SimpleConsole()
+
 SCRIPT_DIR = Path(__file__).parent / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 
-def cmd_wardrobe(args):
-    """衣橱管理"""
+# ==================== AI Commands ====================
+
+def cmd_spof(args):
+    """衣橱/购物清单 CRUD"""
     from wardrobe_ops import main as wardrobe_main
-    
-    # 构造参数列表
     argv = [args.subcommand]
-    
-    if args.subcommand == "add":
-        if args.type: argv.extend(["--type", args.type])
-        if args.sub_type: argv.extend(["--sub-type", args.sub_type])
-        if args.primary_color: argv.extend(["--primary-color", args.primary_color])
-        if args.primary_hex: argv.extend(["--primary-hex", args.primary_hex])
-        if args.secondary_color: argv.extend(["--secondary-color", args.secondary_color])
-        if args.secondary_hex: argv.extend(["--secondary-hex", args.secondary_hex])
-        if args.material: argv.extend(["--material", args.material])
-        if args.fit: argv.extend(["--fit", args.fit])
-        if args.style: argv.extend(["--style", args.style])
-        if args.season: argv.extend(["--season", args.season])
-        if args.temp_range: argv.extend(["--temp-range", args.temp_range])
-        if args.occasion: argv.extend(["--occasion", args.occasion])
-        if args.pair_with: argv.extend(["--pair-with", args.pair_with])
-        if args.restrict: argv.extend(["--restrict", args.restrict])
-        if args.image: argv.extend(["--image", args.image])
-    
-    elif args.subcommand == "list":
-        if args.json: argv.append("--json")
-        if args.category: argv.extend(["--category", args.category])
-        if args.style: argv.extend(["--style", args.style])
-        if args.season: argv.extend(["--season", args.season])
-        if args.occasion: argv.extend(["--occasion", args.occasion])
-    
-    elif args.subcommand == "show":
-        if args.item_id: argv.append(args.item_id)
-    
-    elif args.subcommand == "update":
-        if args.item_id: argv.append(args.item_id)
-        if args.wear_count is not None: argv.extend(["--wear-count", str(args.wear_count)])
-        if args.favorite: argv.extend(["--favorite", args.favorite])
-        if args.style: argv.extend(["--style", args.style])
-    
-    elif args.subcommand == "delete":
-        if args.item_id: argv.append(args.item_id)
-        if args.force: argv.append("--force")
-    
-    elif args.subcommand == "record":
-        if args.items: argv.extend(["--items", args.items])
-        if args.occasion: argv.extend(["--occasion", args.occasion])
-        if args.weather: argv.extend(["--weather", args.weather])
-        if args.temp: argv.extend(["--temp", str(args.temp)])
-        if args.notes: argv.extend(["--notes", args.notes])
-    
-    elif args.subcommand == "restore":
-        if args.item_id: argv.append(args.item_id)
-    
-    # 调用原有脚本
+    if args.item_id:
+        argv.append(args.item_id)
+    if args.file:
+        argv.extend(["--file", args.file])
+    if args.type:
+        argv.extend(["--type", args.type])
+    if args.season:
+        argv.extend(["--season", args.season])
+    if args.wishlist:
+        argv.append("--wishlist")
+    if args.json:
+        argv.append("--json")
     sys.argv = ["wardrobe_ops.py"] + argv
     wardrobe_main()
+
+
+def cmd_wear(args):
+    """穿着管理"""
+    from wear import main as wear_main
+    argv = [args.wear_action]
+    if args.items:
+        argv.extend(["--items", args.items])
+    if args.type:
+        argv.extend(["--type", args.type])
+    if args.date:
+        argv.extend(["--date", args.date])
+    if args.json:
+        argv.append("--json")
+    sys.argv = ["wear.py"] + argv
+    wear_main()
+
+
+def cmd_color(args):
+    """色彩工具"""
+    if args.color_action == "score":
+        from color_math import main as color_main
+        argv = []
+        if args.colors:
+            argv.extend(["--colors", args.colors])
+        sys.argv = ["color_math.py"] + argv
+        color_main()
+
+    elif args.color_action == "inverse":
+        if args.method == "search":
+            from color_inverse import suggest_colors
+            known = [c.strip() for c in args.known.split(",")]
+            suggest_colors(known, args.target, args.missing, args.top)
+        else:
+            from color_inverse_global import diverse_global_inverse
+            known = [c.strip() for c in args.known.split(",")]
+            diverse_global_inverse(known, args.target, args.missing, args.samples, args.maxiter)
 
 
 def cmd_weather(args):
     """天气查询"""
     from weather import main as weather_main
-    
     argv = []
-    if args.city: argv.extend(["--city", args.city])
-    if args.lat: argv.extend(["--lat", str(args.lat)])
-    if args.lon: argv.extend(["--lon", str(args.lon)])
-    
+    if args.city:
+        argv.extend(["--city", args.city])
+    if args.lat:
+        argv.extend(["--lat", str(args.lat)])
+    if args.lon:
+        argv.extend(["--lon", str(args.lon)])
     sys.argv = ["weather.py"] + argv
     weather_main()
 
 
-def cmd_recommend(args):
-    """穿搭推荐 / 今日推荐"""
-    if args.subcommand == "today":
-        from today import main as today_main
-        argv = []
-        if args.city: argv.extend(["--city", args.city])
-        sys.argv = ["today.py"] + argv
-        today_main()
-        return
-    
-    # TODO: 实现智能推荐逻辑
-    print("🚧 推荐功能开发中...")
-    print("当前可使用 score 命令评估搭配方案：")
-    print("  superoutfit score --items item_001,item_003 --occasion 通勤")
-
-
-def cmd_score(args):
-    """搭配评分"""
-    from scorer import main as scorer_main
-    
-    argv = []
-    if args.items: argv.extend(["--items", args.items])
-    if args.occasion: argv.extend(["--occasion", args.occasion])
-    if args.temp: argv.extend(["--temp", str(args.temp)])
-    
-    sys.argv = ["scorer.py"] + argv
-    scorer_main()
-
-
-def cmd_color(args):
-    """色彩协调度"""
-    if args.subcommand == "show":
-        from color_show import print_color_info, print_common_colors
-        if args.hex_color:
-            print_color_info(args.hex_color)
-        else:
-            print_common_colors()
-        return
-    
-    from color_math import main as color_main
-    argv = []
-    if args.items: argv.extend(["--items", args.items])
-    if args.colors: argv.extend(["--colors", args.colors])
-    sys.argv = ["color_math.py"] + argv
-    color_main()
-
-
-def cmd_inverse(args):
-    """反向推导颜色"""
-    if args.method == "search":
-        from color_inverse import suggest_colors
-        known = [c.strip() for c in args.known.split(",")]
-        suggest_colors(known, args.target, args.missing, args.top)
-    else:
-        from color_inverse_global import diverse_global_inverse
-        known = [c.strip() for c in args.known.split(",")]
-        diverse_global_inverse(known, args.target, args.missing, args.samples, args.maxiter)
-
-
-def cmd_palette(args):
-    """色卡管理"""
-    if args.subcommand == "list":
-        # 列出色卡
-        scored_path = Path("data/scored_palettes.json")
-        if not scored_path.exists():
-            print("❌ 未找到已评分色卡，请先运行：superoutfit palette train")
+def cmd_data(args):
+    """数据导入导出"""
+    from data_manager import export_data, import_data
+    if args.data_action == "export":
+        export_data(args.output)
+    elif args.data_action == "import":
+        if not args.file:
+            print("需要 --file")
             return
-        
-        with open(scored_path, "r", encoding="utf-8") as f:
-            palettes = json.load(f)
-        
-        # 按分数排序
-        palettes.sort(key=lambda x: x.get("score", 0), reverse=True)
-        
-        # 筛选
-        if args.top:
-            palettes = palettes[:args.top]
-        if args.source:
-            palettes = [p for p in palettes if p.get("source") == args.source]
-        if args.min_score:
-            palettes = [p for p in palettes if p.get("score", 0) >= args.min_score]
-        
-        print(f"📊 共 {len(palettes)} 组色卡\n")
-        for i, p in enumerate(palettes[:20], 1):
-            colors = " ".join(p.get("colors", []))
-            score = p.get("score", 0)
-            source = p.get("source", "")
-            likes = p.get("likes", 0)
-            grade = p.get("grade", "")
-            
-            # 色块预览
-            preview = ""
-            for c in p.get("colors", []):
-                preview += f"  {c}"
-            
-            print(f"{i:3}. {grade:3} {score:5.1f}分 | {colors}{preview}")
-            print(f"     来源: {source} | 点赞: {likes}")
-    
-    elif args.subcommand == "train":
-        # 训练色彩模型
-        print("🎨 开始训练色彩模型...")
-        from like_based_scoring import main as train_main
-        sys.argv = ["like_based_scoring.py"]
-        train_main()
-    
-    elif args.subcommand == "scrape":
-        # 爬取色卡
-        print("🕷️ 开始爬取色卡...")
-        from scrape_palettes import main as scrape_main
-        sys.argv = ["scrape_palettes.py"]
-        scrape_main()
-        
-        from scrape_wxsecai import main as scrape_wxsecai_main
-        sys.argv = ["scrape_wxsecai.py"]
-        scrape_wxsecai_main()
+        import_data(args.file, merge=args.merge, force=args.force)
 
 
-def cmd_knowledge(args):
-    """知识库管理"""
-    refs_dir = Path("references")
-    
-    if args.subcommand == "list":
-        # 列出知识文件
-        files = sorted(refs_dir.glob("*.md"))
-        print(f"📚 共 {len(files)} 篇知识文档\n")
-        for f in files:
-            if f.name == "SOURCES.md":
-                continue
-            # 读取第一行作为标题
-            with open(f, "r", encoding="utf-8") as fh:
-                first_line = fh.readline().strip()
-                title = first_line.lstrip("#").strip() if first_line else f.stem
-            print(f"  {f.name:20} {title}")
-    
-    elif args.subcommand == "show":
-        # 显示知识内容
-        if not args.filename:
-            print("❌ 请指定文件名，例如：superoutfit knowledge show color.md")
-            return
-        
-        filepath = refs_dir / args.filename
-        if not filepath.exists():
-            print(f"❌ 文件不存在：{filepath}")
-            return
-        
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-        
-        if args.raw:
-            print(content)
-        else:
-            # 简单渲染（去掉 markdown 语法）
-            lines = content.split("\n")
-            for line in lines:
-                if line.startswith("#"):
-                    print(f"\n{'='*60}")
-                    print(line)
-                    print(f"{'='*60}")
-                elif line.startswith("- "):
-                    print(f"  • {line[2:]}")
-                elif line.startswith("```"):
-                    continue
-                else:
-                    print(line)
-    
-    elif args.subcommand == "edit":
-        # 编辑知识文件
-        if not args.filename:
-            print("❌ 请指定文件名，例如：superoutfit knowledge edit color.md")
-            return
-        
-        filepath = refs_dir / args.filename
-        if not filepath.exists():
-            print(f"❌ 文件不存在：{filepath}")
-            return
-        
-        # 使用默认编辑器打开
-        editor = os.environ.get("EDITOR", "notepad" if os.name == "nt" else "vim")
-        os.system(f'{editor} "{filepath}"')
+def cmd_system(args):
+    """系统管理"""
+    action = getattr(args, "system_action", "info")
+
+    if action == "info":
+        # 版本 + 衣橱统计
+        from pathlib import Path as P
+        import yaml
+        items_dir = P("data/items")
+        wishlist_dir = P("data/wishlist")
+        item_count = len(list(items_dir.glob("*.yaml"))) if items_dir.exists() else 0
+        wish_count = len(list(wishlist_dir.glob("*.yaml"))) if wishlist_dir.exists() else 0
+        print(f"SuperOutfit v3.2.0")
+        print(f"  衣柜: {item_count} 件")
+        print(f"  购物清单: {wish_count} 件")
+
+    elif action == "gateway":
+        gw_action = getattr(args, "gw_action", "up")
+        if gw_action == "up":
+            from gateway import Gateway, load_pid, is_process_running
+            data = load_pid()
+            if data and is_process_running(data["pid"]):
+                print(f"Gateway 已在运行 (PID: {data['pid']})")
+                return
+            class A:
+                port = args.port
+                no_frontend = args.no_frontend
+                no_mcp = args.no_mcp
+                dev = args.dev
+            Gateway(A()).run()
+
+        elif gw_action == "down":
+            from gateway import stop_gateway
+            success, message = stop_gateway()
+            print(message)
+
+        elif gw_action == "status":
+            from gateway import get_gateway_status
+            status = get_gateway_status()
+            if not status["running"]:
+                print(f"Gateway: {status['message']}")
+                return
+            print(f"Gateway: 运行中 (PID: {status['pid']})")
+            ports = status.get("ports", {})
+            if ports.get("api"):
+                print(f"  API: http://localhost:{ports['api']}")
 
 
-def cmd_config(args):
-    """配置查看 / 衣橱统计"""
-    if args.subcommand == "stats":
-        from stats import main as stats_main
-        argv = []
-        if args.json: argv.append("--json")
-        sys.argv = ["stats.py"] + argv
-        stats_main()
-        return
-    
-    profile_path = Path("data/profile.yaml")
-    
-    if not profile_path.exists():
-        print("❌ 未找到用户画像，请先创建 data/profile.yaml")
-        return
-    
-    import yaml
-    with open(profile_path, "r", encoding="utf-8") as f:
-        profile = yaml.safe_load(f)
-    
-    print("⚙️  用户配置\n")
-    print(f"  姓名: {profile.get('name', '未设置')}")
-    print(f"  身高: {profile.get('height', '未设置')} cm")
-    print(f"  体重: {profile.get('weight', '未设置')} kg")
-    print(f"  肩宽: {profile.get('shoulder', '未设置')} cm")
-    print(f"  胸围: {profile.get('chest', '未设置')} cm")
-    print(f"  腰围: {profile.get('waist', '未设置')} cm")
-    print(f"  臀围: {profile.get('hip', '未设置')} cm")
-    print(f"  风格: {', '.join(profile.get('styles', []))}")
-    print(f"  偏好颜色: {', '.join(profile.get('preferred_colors', []))}")
-    print(f"  预算: 上衣 {profile.get('budget', {}).get('top', '?')} / 下装 {profile.get('budget', {}).get('bottom', '?')} / 外套 {profile.get('budget', {}).get('outer', '?')}")
-
-
-def cmd_update(args):
-    """更新 SuperOutfit 到最新版本"""
-    import subprocess
-    from pathlib import Path
-    
-    # 获取安装目录
-    install_dir = Path(__file__).parent
-    
-    print("🔄 更新 SuperOutfit...\n")
-    
-    # 检查是否是 git 仓库
-    if not (install_dir / ".git").exists():
-        print("❌ 不是 git 仓库，无法更新")
-        print("   请重新运行安装脚本:")
-        print("   irm https://raw.githubusercontent.com/egg-rolls/SuperOutfit/master/scripts/install-simple.ps1 | iex")
-        return
-    
-    # 拉取最新代码
-    print("  拉取最新代码...")
-    result = subprocess.run(
-        ["git", "pull", "origin", "master"],
-        cwd=str(install_dir),
-        capture_output=True,
-        text=True
-    )
-    
-    if result.returncode != 0:
-        print(f"❌ 更新失败: {result.stderr}")
-        return
-    
-    if "Already up to date" in result.stdout:
-        print("✓ 已是最新版本")
-    else:
-        print("✓ 代码已更新")
-    
-    # 更新依赖
-    print("\n  更新依赖...")
-    venv_python = install_dir / ".venv" / "Scripts" / "python.exe"
-    if venv_python.exists():
-        subprocess.run(
-            [str(venv_python), "-m", "pip", "install", "-e", ".", "-q"],
-            cwd=str(install_dir),
-            capture_output=True
-        )
-        print("✓ 依赖已更新")
-    
-    print("\n✅ 更新完成！")
-    print("   请重新打开终端以使用新版本")
-
-
-def cmd_version(args):
-    """版本信息"""
-    print("SuperOutfit v3.1.0")
-    print("AI 智能穿搭顾问 — MCP + CLI")
-    print("https://github.com/egg-rolls/SuperOutfit")
-
-
-def cmd_init(args):
-    """首次使用引导"""
-    from init_guide import main as init_main
-    argv = []
-    if args.quick: argv.append("--quick")
-    sys.argv = ["init_guide.py"] + argv
-    init_main()
-
+# ==================== Infrastructure ====================
 
 def cmd_tui(args):
-    """交互式 TUI 模式"""
     from tui import main as tui_main
     tui_main()
 
 
-def cmd_skill(args):
-    """Skill 子命令路由"""
-    action = getattr(args, 'skill_action', 'install')
-    
-    if action == 'install':
-        cmd_skill_install(args)
-    elif action == 'uninstall':
-        cmd_skill_uninstall(args)
-    else:
-        cmd_skill_install(args)
+def cmd_init(args):
+    from init_guide import main as init_main
+    argv = []
+    if args.quick:
+        argv.append("--quick")
+    sys.argv = ["init_guide.py"] + argv
+    init_main()
 
 
-def cmd_skill_install(args):
-    """安装 Skill"""
-    setup_script = Path(__file__).parent / "scripts" / "setup_skill.py"
-    if not setup_script.exists():
-        print("错误：找不到 setup_skill.py")
+def cmd_update(args):
+    install_dir = Path(__file__).parent
+    print("更新 SuperOutfit...")
+    if not (install_dir / ".git").exists():
+        print("不是 git 仓库")
         return
-    
-    subprocess.run([sys.executable, str(setup_script)])
-
-
-def cmd_skill_uninstall(args):
-    """卸载 Skill"""
-    uninstall_script = Path(__file__).parent / "scripts" / "uninstall_skill.py"
-    if not uninstall_script.exists():
-        print("错误：找不到 uninstall_skill.py")
+    result = subprocess.run(["git", "pull", "origin", "master"],
+                            cwd=str(install_dir), capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"更新失败: {result.stderr}")
         return
-    
-    cmd_args = [sys.executable, str(uninstall_script)]
-    if args.yes:
-        cmd_args.append("--yes")
-    
-    subprocess.run(cmd_args)
+    print("已是最新" if "Already up to date" in result.stdout else "代码已更新")
 
 
-def cmd_gateway(args):
-    """Gateway 子命令路由"""
-    action = getattr(args, 'gateway_action', 'up')
-    
-    if action == 'up':
-        cmd_gateway_up(args)
-    elif action == 'down':
-        cmd_gateway_down(args)
-    elif action == 'restart':
-        cmd_gateway_restart(args)
-    elif action == 'status':
-        cmd_gateway_status(args)
-    else:
-        cmd_gateway_up(args)
+def show_banner():
+    try:
+        title = Text("SPOF", style="bold magenta")
+        subtitle = Text("AI 智能穿搭顾问", style="dim")
+        version = Text("v3.2.0", style="green")
+        content = Text.assemble("\n", "  ", title, "\n", "  ", subtitle, "\n", "  ", version, "\n")
+        console.print(Panel(content, border_style="blue", expand=False))
+    except:
+        print("SuperOutfit v3.2.0")
 
 
-def cmd_gateway_up(args):
-    """启动 Gateway"""
-    from gateway import Gateway, load_pid, is_process_running
-    
-    # 检查是否已在运行
-    data = load_pid()
-    if data and is_process_running(data["pid"]):
-        print(f"Gateway 已在运行 (PID: {data['pid']})")
-        print(f"  API: http://localhost:{data.get('ports', {}).get('api', '?')}")
-        print("使用 'superoutfit gateway restart' 重启")
-        return
-    
-    class Args:
-        def __init__(self):
-            self.port = args.port
-            self.no_frontend = args.no_frontend
-            self.no_mcp = args.no_mcp
-            self.dev = args.dev
-    
-    gateway = Gateway(Args())
-    gateway.run()
-
-
-def cmd_gateway_down(args):
-    """停止 Gateway"""
-    from gateway import stop_gateway, load_pid
-    
-    success, message = stop_gateway()
-    print(message)
-    
-    if not success:
-        data = load_pid()
-        if data:
-            print(f"PID: {data['pid']}")
-
-
-def cmd_gateway_restart(args):
-    """重启 Gateway"""
-    from gateway import stop_gateway, load_pid, is_process_running
-    
-    # 先停止
-    data = load_pid()
-    if data and is_process_running(data["pid"]):
-        print("正在停止 Gateway...")
-        success, message = stop_gateway()
-        print(message)
-        
-        if success:
-            import time
-            time.sleep(1)
-    
-    # 再启动
-    cmd_gateway_up(args)
-
-
-def cmd_gateway_status(args):
-    """查看 Gateway 状态"""
-    from gateway import get_gateway_status, load_pid
-    
-    status = get_gateway_status()
-    
-    if not status["running"]:
-        print(f"Gateway 状态: {status['message']}")
-        return
-    
-    print("Gateway 状态: 运行中")
-    print(f"  PID: {status['pid']}")
-    
-    # 显示运行时间
-    if status.get("started_at"):
-        import time
-        elapsed = int(time.time() - status["started_at"])
-        if elapsed < 60:
-            time_str = f"{elapsed} 秒"
-        elif elapsed < 3600:
-            time_str = f"{elapsed // 60} 分钟"
-        else:
-            time_str = f"{elapsed // 3600} 小时 {(elapsed % 3600) // 60} 分钟"
-        print(f"  运行时间: {time_str}")
-    
-    # 显示端口
-    ports = status.get("ports", {})
-    if ports.get("api"):
-        print(f"  API: http://localhost:{ports['api']}")
-    if ports.get("frontend"):
-        print(f"  前端: http://localhost:{ports['frontend']}")
-    if ports.get("mcp"):
-        print(f"  MCP: http://localhost:{ports['mcp']}")
-    
-    # 显示服务
-    services = status.get("services", {})
-    if services:
-        print(f"  服务: {', '.join(services.keys())}")
-
+# ==================== Main ====================
 
 def main():
+    show_banner()
+
     parser = argparse.ArgumentParser(
         prog="superoutfit",
-        description="🧥 SuperOutfit — AI 智能穿搭顾问",
+        description="SuperOutfit AI 智能穿搭顾问",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  spof skill install                   # 安装 Skill
-  spof skill uninstall                 # 卸载 Skill
-  spof gateway up                      # 启动 Gateway
-  spof gateway down                    # 停止 Gateway
-  spof gateway restart                 # 重启 Gateway
-  spof gateway status                  # 查看状态
-  spof wardrobe add --type "上衣" --color "#F5F0E8"
-  spof wardrobe list --category "上衣"
-  spof weather --city "大连"
-  spof score --items item_001,item_003 --occasion 通勤
-  spof color --colors "#F5F0E8,#C4A97D,#111111"
-  spof inverse --known "#F5F0E8,#111111" --target 75 --missing 2
-  spof palette list --top 10
-  spof knowledge show color.md
-  spof config
-  spof update
-        """
+  spof add --file item.yaml                    # 添加衣物
+  spof add --file item.yaml --wishlist         # 添加到购物清单
+  spof list --type 上衣 --season 夏             # 筛选
+  spof show item_001                           # 查看详情
+  spof edit item_001 --file new.yaml         # 编辑
+  spof delete item_001                         # 删除
+  spof wear add --items item_001,item_002      # 记录穿着
+  spof wear check                              # 需清洗的
+  spof wear report                             # 穿着报表
+  spof color score --colors "#F5F0E8,#111111"  # 色彩和谐度
+  spof color inverse --known "#F5F0E8" --target 75 --missing 1
+  spof weather                                 # 天气
+  spof data export                             # 导出数据
+  spof system info                             # 系统信息
+  spof system gateway up                       # 启动网关
+        """,
     )
-    
-    parser.add_argument("-v", "--version", action="store_true", help="显示版本信息")
-    
-    subparsers = parser.add_subparsers(dest="command", help="可用命令")
-    
-    # === tui ===
-    p_tui = subparsers.add_parser("tui", help="交互式 TUI 模式")
-    p_tui.set_defaults(func=cmd_tui)
-    
-    # === init ===
-    p_init = subparsers.add_parser("init", help="首次使用引导")
-    p_init.add_argument("--quick", action="store_true", help="快速模式（使用默认值）")
-    p_init.set_defaults(func=cmd_init)
-    
-    # === skill ===
-    p_skill = subparsers.add_parser("skill", help="Skill 管理")
-    p_skill.add_argument("skill_action", nargs="?", default="install",
-                        choices=["install", "uninstall"],
-                        help="操作: install(安装), uninstall(卸载)")
-    p_skill.add_argument("--yes", "-y", action="store_true", help="跳过确认")
-    p_skill.set_defaults(func=cmd_skill)
-    
-    # === gateway ===
-    p_gateway = subparsers.add_parser("gateway", aliases=["gw"], help="Gateway 服务管理")
-    p_gateway.add_argument("--port", type=int, default=32200, help="API 端口 (默认: 32200)")
-    p_gateway.add_argument("--no-frontend", action="store_true", help="不启动前端")
-    p_gateway.add_argument("--no-mcp", action="store_true", help="不启动 MCP")
-    p_gateway.add_argument("--dev", action="store_true", help="开发模式")
-    p_gateway.add_argument("gateway_action", nargs="?", default="up", 
-                          choices=["up", "down", "restart", "status"],
-                          help="Gateway 操作: up(启动), down(停止), restart(重启), status(状态)")
-    p_gateway.set_defaults(func=cmd_gateway)
-    
-    # === wardrobe ===
-    p_wardrobe = subparsers.add_parser("wardrobe", aliases=["w"], help="衣橱管理")
-    p_wardrobe.add_argument("subcommand", choices=["add", "list", "show", "update", "delete", "stats", "record", "reindex", "restore"],
-                           help="子命令")
-    p_wardrobe.add_argument("--item-id", help="衣物 ID")
-    p_wardrobe.add_argument("--type", help="衣物类型")
-    p_wardrobe.add_argument("--sub-type", help="子类型")
-    p_wardrobe.add_argument("--primary-color", help="主色")
-    p_wardrobe.add_argument("--primary-hex", help="主色 HEX")
-    p_wardrobe.add_argument("--secondary-color", help="次色")
-    p_wardrobe.add_argument("--secondary-hex", help="次色 HEX")
-    p_wardrobe.add_argument("--material", help="材质")
-    p_wardrobe.add_argument("--fit", help="版型")
-    p_wardrobe.add_argument("--style", help="风格（逗号分隔）")
-    p_wardrobe.add_argument("--season", help="季节（逗号分隔）")
-    p_wardrobe.add_argument("--temp-range", help="温度范围")
-    p_wardrobe.add_argument("--occasion", help="场合（逗号分隔）")
-    p_wardrobe.add_argument("--pair-with", help="搭配建议")
-    p_wardrobe.add_argument("--restrict", help="限制搭配")
-    p_wardrobe.add_argument("--image", help="图片文件")
-    p_wardrobe.add_argument("--wear-count", type=int, help="穿着次数")
-    p_wardrobe.add_argument("--favorite", choices=["true", "false"], help="是否收藏")
-    p_wardrobe.add_argument("--items", help="衣物 ID 列表（逗号分隔）")
-    p_wardrobe.add_argument("--notes", help="备注")
-    p_wardrobe.add_argument("--weather", help="天气")
-    p_wardrobe.add_argument("--temp", type=int, help="温度")
-    p_wardrobe.add_argument("--json", action="store_true", help="JSON 输出")
-    p_wardrobe.add_argument("--category", help="分类筛选")
-    p_wardrobe.add_argument("--force", action="store_true", help="强制删除")
-    p_wardrobe.set_defaults(func=cmd_wardrobe)
-    
-    # === weather ===
-    p_weather = subparsers.add_parser("weather", aliases=["wt"], help="天气查询")
-    p_weather.add_argument("--city", default="大连", help="城市名称")
-    p_weather.add_argument("--lat", type=float, help="纬度")
-    p_weather.add_argument("--lon", type=float, help="经度")
-    p_weather.set_defaults(func=cmd_weather)
-    
-    # === recommend ===
-    p_recommend = subparsers.add_parser("recommend", aliases=["r"], help="穿搭推荐")
-    p_recommend.add_argument("subcommand", nargs="?", default="recommend",
-                             choices=["recommend", "today"], help="子命令")
-    p_recommend.add_argument("--items", help="指定衣物 ID")
-    p_recommend.add_argument("--occasion", help="场合")
-    p_recommend.add_argument("--city", default=None, help="城市（默认从配置读取）")
-    p_recommend.set_defaults(func=cmd_recommend)
-    
-    # === score ===
-    p_score = subparsers.add_parser("score", aliases=["s"], help="搭配评分")
-    p_score.add_argument("--items", required=True, help="衣物 ID 列表（逗号分隔）")
-    p_score.add_argument("--occasion", default="日常", help="场合")
-    p_score.add_argument("--temp", type=int, help="温度")
-    p_score.set_defaults(func=cmd_score)
-    
+
+    parser.add_argument("-v", "--version", action="store_true", help="版本信息")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # === spof (衣橱 CRUD) ===
+    p = subparsers.add_parser("add", help="添加衣物 (--wishlist=购物清单)")
+    p.add_argument("--file", required=True, help="YAML 文件路径")
+    p.add_argument("--wishlist", action="store_true", help="添加到购物清单")
+    p.set_defaults(func=lambda a: _crud("add", a))
+
+    p = subparsers.add_parser("list", help="列出衣物")
+    p.add_argument("--type", help="按类型筛选")
+    p.add_argument("--season", help="按季节筛选")
+    p.add_argument("--wishlist", action="store_true", help="列出购物清单")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=lambda a: _crud("list", a))
+
+    p = subparsers.add_parser("show", help="查看衣物详情")
+    p.add_argument("item_id", help="衣物 ID")
+    p.add_argument("--wishlist", action="store_true")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=lambda a: _crud("show", a))
+
+    p = subparsers.add_parser("edit", help="编辑衣物")
+    p.add_argument("item_id", help="衣物 ID")
+    p.add_argument("--file", required=True, help="YAML 文件路径")
+    p.add_argument("--wishlist", action="store_true")
+    p.set_defaults(func=lambda a: _crud("edit", a))
+
+    p = subparsers.add_parser("delete", help="删除衣物")
+    p.add_argument("item_id", help="衣物 ID")
+    p.add_argument("--wishlist", action="store_true")
+    p.set_defaults(func=lambda a: _crud("delete", a))
+
+    # === wear ===
+    p_wear = subparsers.add_parser("wear", help="穿着管理")
+    p_wear.add_argument("wear_action", choices=["add", "wash", "check", "report"])
+    p_wear.add_argument("--items", help="衣物 ID (逗号分隔)")
+    p_wear.add_argument("--type", help="按类型筛选")
+    p_wear.add_argument("--date", help="日期 YYYY-MM-DD")
+    p_wear.add_argument("--json", action="store_true")
+    p_wear.set_defaults(func=cmd_wear)
+
     # === color ===
-    p_color = subparsers.add_parser("color", aliases=["c"], help="色彩协调度")
-    p_color.add_argument("subcommand", nargs="?", default="score", 
-                         choices=["score", "show"], help="子命令")
-    p_color.add_argument("--items", help="衣物 ID 列表（逗号分隔）")
-    p_color.add_argument("--colors", help="HEX 色值列表（逗号分隔）")
-    p_color.add_argument("hex_color", nargs="?", help="HEX 颜色值（用于 show）")
+    p_color = subparsers.add_parser("color", help="色彩工具")
+    p_color.add_argument("color_action", choices=["score", "inverse"])
+    p_color.add_argument("--colors", help="HEX 色值 (逗号分隔)")
+    p_color.add_argument("--known", help="已知颜色 (逗号分隔 HEX)")
+    p_color.add_argument("--target", type=float, help="目标分数")
+    p_color.add_argument("--missing", type=int, help="补全数量")
+    p_color.add_argument("--method", choices=["search", "global"], default="search")
+    p_color.add_argument("--top", type=int, default=5)
+    p_color.add_argument("--samples", type=int, default=3)
+    p_color.add_argument("--maxiter", type=int, default=100)
     p_color.set_defaults(func=cmd_color)
-    
-    # === inverse ===
-    p_inverse = subparsers.add_parser("inverse", aliases=["inv"], help="反向推导颜色")
-    p_inverse.add_argument("--known", required=True, help="已知颜色（逗号分隔的 HEX）")
-    p_inverse.add_argument("--target", type=float, required=True, help="目标分数")
-    p_inverse.add_argument("--missing", type=int, required=True, help="需要补全的颜色数量")
-    p_inverse.add_argument("--method", choices=["search", "global"], default="search", 
-                           help="方法：search=搜索色卡库（快），global=全局优化（慢但可生成新颜色）")
-    p_inverse.add_argument("--top", type=int, default=5, help="搜索法：返回前 N 个建议")
-    p_inverse.add_argument("--samples", type=int, default=3, help="全局法：生成样本数量")
-    p_inverse.add_argument("--maxiter", type=int, default=100, help="全局法：最大迭代次数")
-    p_inverse.set_defaults(func=cmd_inverse)
-    
-    # === palette ===
-    p_palette = subparsers.add_parser("palette", aliases=["p"], help="色卡管理")
-    p_palette.add_argument("subcommand", choices=["list", "train", "scrape"], help="子命令")
-    p_palette.add_argument("--top", type=int, help="显示前 N 个")
-    p_palette.add_argument("--source", help="按来源筛选")
-    p_palette.add_argument("--min-score", type=float, help="最低分数")
-    p_palette.set_defaults(func=cmd_palette)
-    
-    # === knowledge ===
-    p_knowledge = subparsers.add_parser("knowledge", aliases=["k"], help="知识库管理")
-    p_knowledge.add_argument("subcommand", choices=["list", "show", "edit"], help="子命令")
-    p_knowledge.add_argument("filename", nargs="?", help="文件名")
-    p_knowledge.add_argument("--raw", action="store_true", help="原始 Markdown")
-    p_knowledge.set_defaults(func=cmd_knowledge)
-    
-    # === config ===
-    p_config = subparsers.add_parser("config", aliases=["cf"], help="配置查看")
-    p_config.add_argument("subcommand", nargs="?", default="config",
-                          choices=["config", "stats"], help="子命令")
-    p_config.add_argument("--json", action="store_true", help="JSON 输出")
-    p_config.set_defaults(func=cmd_config)
-    
-    # === update ===
-    p_update = subparsers.add_parser("update", aliases=["up"], help="更新到最新版本")
-    p_update.set_defaults(func=cmd_update)
-    
+
+    # === weather ===
+    p_wt = subparsers.add_parser("weather", help="天气查询")
+    p_wt.add_argument("--city", default="大连")
+    p_wt.add_argument("--lat", type=float)
+    p_wt.add_argument("--lon", type=float)
+    p_wt.set_defaults(func=cmd_weather)
+
+    # === data ===
+    p_data = subparsers.add_parser("data", help="数据导入导出")
+    p_data.add_argument("data_action", choices=["export", "import"])
+    p_data.add_argument("--output", "-o")
+    p_data.add_argument("--file", "-f")
+    p_data.add_argument("--merge", action="store_true")
+    p_data.add_argument("--force", action="store_true")
+    p_data.set_defaults(func=cmd_data)
+
+    # === system ===
+    p_sys = subparsers.add_parser("system", help="系统管理")
+    p_sys.add_argument("system_action", nargs="?", default="info",
+                       choices=["info", "gateway"])
+    p_sys.add_argument("gw_action", nargs="?", default="up",
+                       choices=["up", "down", "status"])
+    p_sys.add_argument("--port", type=int, default=32200)
+    p_sys.add_argument("--no-frontend", action="store_true")
+    p_sys.add_argument("--no-mcp", action="store_true")
+    p_sys.add_argument("--dev", action="store_true")
+    p_sys.set_defaults(func=cmd_system)
+
+    # === infra ===
+    p = subparsers.add_parser("tui", help="交互式 TUI")
+    p.set_defaults(func=cmd_tui)
+
+    p = subparsers.add_parser("init", help="首次使用引导")
+    p.add_argument("--quick", action="store_true")
+    p.set_defaults(func=cmd_init)
+
+    p = subparsers.add_parser("update", help="更新 SuperOutfit")
+    p.set_defaults(func=cmd_update)
+
     args = parser.parse_args()
-    
+
     if args.version:
-        cmd_version(args)
+        print("SuperOutfit v3.2.0")
         return
-    
+
     if not args.command:
         parser.print_help()
         return
-    
+
     args.func(args)
+
+
+def _crud(command, args):
+    """统一 CRUD 路由"""
+    from wardrobe_ops import main as wardrobe_main
+    argv = [command]
+    if hasattr(args, "item_id") and args.item_id:
+        argv.append(args.item_id)
+    if hasattr(args, "file") and args.file:
+        argv.extend(["--file", args.file])
+    if hasattr(args, "type") and args.type:
+        argv.extend(["--type", args.type])
+    if hasattr(args, "season") and args.season:
+        argv.extend(["--season", args.season])
+    if hasattr(args, "wishlist") and args.wishlist:
+        argv.append("--wishlist")
+    if hasattr(args, "json") and args.json:
+        argv.append("--json")
+    sys.argv = ["wardrobe_ops.py"] + argv
+    wardrobe_main()
 
 
 if __name__ == "__main__":
     main()
-def cmd_inverse(args):
-    """反向推导颜色"""
-    from scripts.color_inverse import suggest_colors
-    known = [c.strip() for c in args.known.split(",")]
-    suggest_colors(known, args.target, args.missing, args.top)
-
