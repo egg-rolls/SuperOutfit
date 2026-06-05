@@ -8,7 +8,8 @@ SuperOutfit CLI — AI 智能穿搭顾问
     spof color  色彩工具（score/inverse）
     spof weather 天气查询
     spof data   数据导入导出
-    spof system 系统管理（gateway/info）
+    spof info    系统信息
+    spof gateway 网关管理（up/down/status）
 """
 
 import argparse
@@ -119,52 +120,49 @@ def cmd_data(args):
         import_data(args.file, merge=args.merge, force=args.force)
 
 
-def cmd_system(args):
-    """系统管理"""
-    action = getattr(args, "system_action", "info")
+def cmd_info(args):
+    """系统信息"""
+    from pathlib import Path as P
+    items_dir = P("data/items")
+    wishlist_dir = P("data/wishlist")
+    item_count = len(list(items_dir.glob("*.yaml"))) if items_dir.exists() else 0
+    wish_count = len(list(wishlist_dir.glob("*.yaml"))) if wishlist_dir.exists() else 0
+    print(f"SuperOutfit v3.2.0")
+    print(f"  衣柜: {item_count} 件")
+    print(f"  购物清单: {wish_count} 件")
 
-    if action == "info":
-        # 版本 + 衣橱统计
-        from pathlib import Path as P
-        import yaml
-        items_dir = P("data/items")
-        wishlist_dir = P("data/wishlist")
-        item_count = len(list(items_dir.glob("*.yaml"))) if items_dir.exists() else 0
-        wish_count = len(list(wishlist_dir.glob("*.yaml"))) if wishlist_dir.exists() else 0
-        print(f"SuperOutfit v3.2.0")
-        print(f"  衣柜: {item_count} 件")
-        print(f"  购物清单: {wish_count} 件")
 
-    elif action == "gateway":
-        gw_action = getattr(args, "gw_action", "up")
-        if gw_action == "up":
-            from gateway import Gateway, load_pid, is_process_running
-            data = load_pid()
-            if data and is_process_running(data["pid"]):
-                print(f"Gateway 已在运行 (PID: {data['pid']})")
-                return
-            class A:
-                port = args.port
-                no_frontend = args.no_frontend
-                no_mcp = args.no_mcp
-                dev = args.dev
-            Gateway(A()).run()
+def cmd_gateway(args):
+    """网关管理"""
+    gw_action = getattr(args, "gw_action", "up")
+    if gw_action == "up":
+        from gateway import Gateway, load_pid, is_process_running
+        data = load_pid()
+        if data and is_process_running(data["pid"]):
+            print(f"Gateway 已在运行 (PID: {data['pid']})")
+            return
+        class A:
+            port = args.port
+            no_frontend = args.no_frontend
+            no_mcp = args.no_mcp
+            dev = args.dev
+        Gateway(A()).run()
 
-        elif gw_action == "down":
-            from gateway import stop_gateway
-            success, message = stop_gateway()
-            print(message)
+    elif gw_action == "down":
+        from gateway import stop_gateway
+        success, message = stop_gateway()
+        print(message)
 
-        elif gw_action == "status":
-            from gateway import get_gateway_status
-            status = get_gateway_status()
-            if not status["running"]:
-                print(f"Gateway: {status['message']}")
-                return
-            print(f"Gateway: 运行中 (PID: {status['pid']})")
-            ports = status.get("ports", {})
-            if ports.get("api"):
-                print(f"  API: http://localhost:{ports['api']}")
+    elif gw_action == "status":
+        from gateway import get_gateway_status
+        status = get_gateway_status()
+        if not status["running"]:
+            print(f"Gateway: {status['message']}")
+            return
+        print(f"Gateway: 运行中 (PID: {status['pid']})")
+        ports = status.get("ports", {})
+        if ports.get("api"):
+            print(f"  API: http://localhost:{ports['api']}")
 
 
 # ==================== Infrastructure ====================
@@ -232,8 +230,8 @@ def main():
   spof color inverse --known "#F5F0E8" --target 75 --missing 1
   spof weather                                 # 天气
   spof data export                             # 导出数据
-  spof system info                             # 系统信息
-  spof system gateway up                       # 启动网关
+  spof info                                    # 系统信息
+  spof gateway up                              # 启动网关
         """,
     )
 
@@ -308,17 +306,19 @@ def main():
     p_data.add_argument("--force", action="store_true")
     p_data.set_defaults(func=cmd_data)
 
-    # === system ===
-    p_sys = subparsers.add_parser("system", help="系统管理")
-    p_sys.add_argument("system_action", nargs="?", default="info",
-                       choices=["info", "gateway"])
-    p_sys.add_argument("gw_action", nargs="?", default="up",
-                       choices=["up", "down", "status"])
-    p_sys.add_argument("--port", type=int, default=32200)
-    p_sys.add_argument("--no-frontend", action="store_true")
-    p_sys.add_argument("--no-mcp", action="store_true")
-    p_sys.add_argument("--dev", action="store_true")
-    p_sys.set_defaults(func=cmd_system)
+    # === info ===
+    p_info = subparsers.add_parser("info", help="系统信息")
+    p_info.set_defaults(func=cmd_info)
+
+    # === gateway ===
+    p_gw = subparsers.add_parser("gateway", aliases=["gw"], help="网关管理")
+    p_gw.add_argument("gw_action", nargs="?", default="up",
+                      choices=["up", "down", "status"])
+    p_gw.add_argument("--port", type=int, default=32200)
+    p_gw.add_argument("--no-frontend", action="store_true")
+    p_gw.add_argument("--no-mcp", action="store_true")
+    p_gw.add_argument("--dev", action="store_true")
+    p_gw.set_defaults(func=cmd_gateway)
 
     # === infra ===
     p = subparsers.add_parser("tui", help="交互式 TUI")
