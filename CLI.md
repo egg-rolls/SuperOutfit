@@ -281,7 +281,7 @@ spof system info
 
 # 启动服务
 spof system gateway up
-# 浏览器打开 http://localhost:8002
+# 浏览器打开 http://localhost:32201
 ```
 
 ### 2. 添加衣物
@@ -387,8 +387,8 @@ git pull && uv pip install -e .
 
 ```bash
 # 检查端口占用
-netstat -ano | findstr :8001  # Windows
-lsof -i :8001                 # macOS/Linux
+netstat -ano | findstr :32200  # Windows
+lsof -i :32200                 # macOS/Linux
 
 # 查看状态
 spof system gateway status

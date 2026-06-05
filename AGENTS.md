@@ -8,7 +8,7 @@ SuperOutfit 是一个 AI 智能穿搭顾问系统，支持三种入口：
 
 1. **CLI 命令行** — 统一的 `spof` 命令（推荐）
 2. **MCP Server** — 通过 stdio 协议与 AI Agent 交互（12 个工具）
-3. **FastAPI 后端** — REST API，支持前端调用（端口 8001）
+3. **FastAPI 后端** — REST API，支持前端调用（端口 32200）
 4. **Vue 前端** — Web 界面，Claude 设计风格（端口 5173）
 
 核心能力：
@@ -119,7 +119,7 @@ D:\Application\SuperOutfit\
 │  MCP Server (server.py)                                     │
 │  └─ 12 个工具（天气/衣橱/推荐/评分/色彩）                      │
 ├─────────────────────────────────────────────────────────────┤
-│  FastAPI Backend (api/main.py, 端口 8001)                   │
+│  FastAPI Backend (api/main.py, 端口 32200)                  │
 │  └─ 12+ REST 端点 + 静态文件服务                              │
 │  └─ 通过 subprocess 调用 scripts/ CLI 工具                   │
 ├─────────────────────────────────────────────────────────────┤
@@ -141,8 +141,8 @@ spof list --type 上衣 --season 夏
 spof show item_001
 spof wear report --items item_001
 
-# 后端（端口 8001）
-uv run uvicorn api.main:app --host 0.0.0.0 --port 8001 --reload
+# 后端（端口 32200）
+uv run uvicorn api.main:app --host 0.0.0.0 --port 32200 --reload
 
 # 前端（端口 5173，自动代理 API）
 cd frontend && npm run dev
