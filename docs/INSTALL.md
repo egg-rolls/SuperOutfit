@@ -74,52 +74,46 @@ superoutfit --help
 
 ```bash
 # 查看帮助
-superoutfit --help
+spof --help
 
-# 衣橱管理
-superoutfit wardrobe list
-superoutfit wardrobe add --type 上衣 --primary-hex '#F5F0E8'
+# 衣物 CRUD
+spof add --file item.yaml
+spof list [--type X] [--season X] [--json]
+spof show item_001
+spof edit item_001 --file new.yaml
+spof delete item_001
 
-# 天气查询
-superoutfit weather
+# 心愿单（同样的 CRUD，加 --wishlist）
+spof list --wishlist
+spof add --file wishlist_item.yaml --wishlist
 
-# 今日推荐
-superoutfit recommend today
-
-# 搭配评分
-superoutfit score --items item_001,item_003
+# 穿着记录
+spof wear add --items item_001,item_002
+spof wear wash --items item_001
+spof wear check
+spof wear report
 
 # 色彩分析
-superoutfit color show '#F5F0E8'
-superoutfit color --colors '#F5F0E8,#111111'
+spof color score --colors '#F5F0E8,#111111'
+spof color inverse --known '#F5F0E8' --target 75 --missing 1
 
-# 反向推导
-superoutfit inverse --known '#F5F0E8,#111111' --target 75 --missing 2
-
-# 衣橱统计
-superoutfit config stats
-
-# 交互模式
-superoutfit tui
-
-# 启动 Gateway
-superoutfit gateway
+# 天气 & 系统
+spof weather [--city X]
+spof system info
+spof update
 ```
 
 ### Gateway 模式
 
 ```bash
 # 启动所有服务（API + 前端 + MCP）
-superoutfit gateway
+spof system gateway up
 
-# 指定端口
-superoutfit gateway --port 8000
+# 查看状态
+spof system gateway status
 
-# 不启动前端
-superoutfit gateway --no-frontend
-
-# 开发模式（前端热重载）
-superoutfit gateway --dev
+# 停止
+spof system gateway down
 ```
 
 ## 配置文件

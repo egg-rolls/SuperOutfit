@@ -1,4 +1,4 @@
-# AGENTS.md - SuperOutfit 开发指南
+# AGENTS.md - SuperOutfit v3.2 开发指南
 
 > 本文档指导工程师（包括 AI Agent）开发和维护 SuperOutfit 项目。
 
@@ -6,7 +6,7 @@
 
 SuperOutfit 是一个 AI 智能穿搭顾问系统，支持三种入口：
 
-1. **CLI 命令行** — 统一的 `superoutfit` 命令（推荐）
+1. **CLI 命令行** — 统一的 `spof` 命令（推荐）
 2. **MCP Server** — 通过 stdio 协议与 AI Agent 交互（12 个工具）
 3. **FastAPI 后端** — REST API，支持前端调用（端口 8001）
 4. **Vue 前端** — Web 界面，Claude 设计风格（端口 5173）
@@ -15,7 +15,17 @@ SuperOutfit 是一个 AI 智能穿搭顾问系统，支持三种入口：
 - **衣物管理** — YAML 文件存储，用户可直接在资源管理器浏览编辑
 - **穿搭推荐** — AI 基于天气 + 衣橱 + 用户画像推荐搭配
 - **色彩评分** — 基于 6400 组真实色卡训练的高斯过程数学模型
+- **穿着追踪** — 记录穿着/洗涤历史，自动计算单次穿着成本
+- **心愿单** — 独立管理想买的衣物，与正式衣橱隔离
 - **主题系统** — 从色卡中提取 4 色切换全站主题，派生全部 CSS 变量
+
+## v3.2 设计原则
+
+1. **AI 写 YAML，spof 处理它** — 所有衣物数据通过 YAML 文件提交，没有 `--field` 参数
+2. **`--wishlist` 切换目标** — 默认操作 `data/items/`，加 `--wishlist` 操作 `data/wishlist/`
+3. **模糊搜索用 `search_files`** — 不自建搜索命令，复用文件搜索工具
+4. **数据自包含** — 穿着日期 (`wear_dates`)、洗涤频率 (`wash_frequency`) 写入 item YAML
+5. **批量操作** — `--items` 逗号分隔、`--type` 过滤类型
 
 ## 项目结构
 
@@ -24,8 +34,9 @@ D:\Application\SuperOutfit\
 ├── AGENTS.md               # 本文件 — 开发指南
 ├── SKILL.md                # Hermes Agent 指令文件
 ├── README.md               # 用户文档
+├── CLI.md                  # CLI 命令速查
 ├── LICENSE                 # MIT
-├── superoutfit.py          # CLI 入口（统一命令）
+├── superoutfit.py          # CLI 入口（spof 命令）
 ├── server.py               # MCP Server
 ├── pyproject.toml          # Python 依赖 + CLI 入口点
 │
@@ -36,8 +47,8 @@ D:\Application\SuperOutfit\
 │   ├── src/
 │   │   ├── App.vue         # 主应用（设计系统 + 主题逻辑）
 │   │   ├── composables/    # 可复用逻辑（useWardrobe, useProfile, usePalettes, useRefs）
-│   │   ├── components/     # UI 组件（AppHeader, TabNav, WardrobeCard, ItemModal, RefModal）
-│   │   ├── views/          # 页面组件（WardrobeView, PalettesView, RefsView, ProfileView, RecommendView）
+│   │   ├── components/     # UI 组件
+│   │   ├── views/          # 页面组件
 │   │   └── services/       # API 服务层
 │   ├── public/
 │   │   ├── manifest.json   # PWA 配置
@@ -46,14 +57,15 @@ D:\Application\SuperOutfit\
 │   └── package.json
 │
 ├── scripts/                # 核心脚本 + 工具
-│   ├── wardrobe_ops.py     # 衣物 CRUD（add/list/show/update/delete/stats/reindex/record/restore）
+│   ├── wardrobe_ops.py     # 衣物 CRUD（add/list/show/edit/delete）
+│   ├── wear_ops.py         # 穿着记录（add/wash/check/report）
 │   ├── weather.py          # 天气查询（Open-Meteo 免费 API）
 │   ├── scorer.py           # 搭配评分（6 维度，调用 color_math.py）
 │   ├── color_math.py       # 色彩协调度计算（GP 模型 + HSL + OKLab）
 │   ├── like_based_scoring.py # 特征提取 + 点赞迁移 + 7 级评分
-│   ├── train_color_model.py # 色彩模型训练（特征提取 + 线性回归 + GP）
-│   ├── scrape_palettes.py  # 色卡爬虫（Color Hunt + Colormind + LOL Colors + Design Seeds）
-│   ├── scrape_wxsecai.py   # 色卡爬虫（色采 wxsecai.com / colorcollect.cn）
+│   ├── train_color_model.py # 色彩模型训练
+│   ├── scrape_palettes.py  # 色卡爬虫
+│   ├── scrape_wxsecai.py   # 色卡爬虫（色采）
 │   ├── init_data.py        # 首次初始化数据目录
 │   ├── export.py           # 导出分享包
 │   ├── install_skill.py    # 从应用目录同步文档到 skill 目录
@@ -67,7 +79,7 @@ D:\Application\SuperOutfit\
 │
 ├── references/             # 穿搭领域知识（按需加载）
 │   ├── color.md            # 色彩搭配规则
-│   ├── color_theory.md     # 色彩理论数学（底色/色环/CMYK）
+│   ├── color_theory.md     # 色彩理论数学
 │   ├── color_pipeline.md   # 色彩模型数据管道技术文档
 │   ├── silhouette.md       # 版型与身材匹配
 │   ├── wardrobe.md         # 衣橱结构与日常流程
@@ -84,10 +96,9 @@ D:\Application\SuperOutfit\
 └── data/                   # 用户数据（.gitignore 排除）
     ├── profile.yaml        # 用户画像
     ├── wardrobe_index.yaml # 衣物索引（自动生成）
-    ├── history.yaml        # 穿搭历史
     ├── preferences.yaml    # AI 学习偏好
-    ├── items/              # 衣物详情 YAML
-    ├── outfits/            # 搭配方案
+    ├── items/              # 衣物详情 YAML（正式衣橱）
+    ├── wishlist/           # 心愿单 YAML（想买的衣物）
     ├── images/             # 衣物图片
     ├── archive/            # 已淘汰衣物
     ├── raw_palettes.json   # 色卡原始数据（6400 组）
@@ -100,10 +111,10 @@ D:\Application\SuperOutfit\
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                       SuperOutfit                           │
+│                       SuperOutfit v3.2                       │
 ├─────────────────────────────────────────────────────────────┤
-│  CLI (superoutfit.py)                                       │
-│  └─ 统一命令入口：wardrobe/weather/score/color/palette/...   │
+│  CLI (superoutfit.py → spof)                                │
+│  └─ 统一命令入口：add/list/show/edit/delete/wear/color/...   │
 ├─────────────────────────────────────────────────────────────┤
 │  MCP Server (server.py)                                     │
 │  └─ 12 个工具（天气/衣橱/推荐/评分/色彩）                      │
@@ -114,11 +125,10 @@ D:\Application\SuperOutfit\
 ├─────────────────────────────────────────────────────────────┤
 │  Vue 3 Frontend (frontend/, 端口 5173)                      │
 │  └─ Naive UI + @vicons/ionicons5                            │
-│  └─ 4 个页面：衣橱、推荐、色卡、知识库                         │
 │  └─ Claude 设计风格 + 主题切换                                │
 ├─────────────────────────────────────────────────────────────┤
 │  Python Scripts (scripts/)                                  │
-│  └─ wardrobe_ops.py / weather.py / scorer.py / color_math.py │
+│  └─ wardrobe_ops.py / wear_ops.py / weather.py / scorer.py  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -126,8 +136,10 @@ D:\Application\SuperOutfit\
 
 ```bash
 # CLI（推荐）
-superoutfit wardrobe list
-superoutfit score --items item_001,item_003 --occasion 通勤
+spof list
+spof list --type 上衣 --season 夏
+spof show item_001
+spof wear report --items item_001
 
 # 后端（端口 8001）
 uv run uvicorn api.main:app --host 0.0.0.0 --port 8001 --reload
@@ -138,6 +150,209 @@ cd frontend && npm run dev
 # MCP Server
 python server.py
 ```
+
+## CLI 命令概览（v3.2）
+
+完整参考见 [CLI.md](CLI.md)。核心命令：
+
+```bash
+# ── 衣橱管理 ──
+spof add --file item.yaml [--wishlist]        # 添加衣物
+spof list [--type X] [--season X] [--wishlist] [--json]
+spof show item_001 [--json]
+spof edit item_001 --file new.yaml            # 整文件覆盖
+spof delete item_001 [--wishlist]
+
+# ── 穿着追踪 ──
+spof wear add --items item_001,item_002       # 记录穿着
+spof wear wash --items item_001               # 标记已洗
+spof wear check [--type X]                    # 需要洗涤的衣物
+spof wear report [--items X] [--json]         # 穿着报告 + 单次穿着成本
+
+# ── 色彩分析 ──
+spof color score --colors '#F5F0E8,#111111'   # 色彩协调度
+spof color inverse --known '#F5F0E8' --target 75 --missing 1  # 反向推导
+
+# ── 其他 ──
+spof weather [--city X]
+spof data export / import
+spof system info | gateway up/down/status
+spof update                                   # git pull 更新
+```
+
+## MCP Server 配置
+
+MCP Server 通过 stdio 协议与 AI Agent 交互。在 MCP 客户端配置中添加：
+
+```json
+{
+  "mcpServers": {
+    "superoutfit": {
+      "command": "python",
+      "args": ["D:\\Application\\SuperOutfit\\server.py"],
+      "env": {
+        "SUPEROUTFIT_DATA": "D:\\Application\\SuperOutfit\\data"
+      }
+    }
+  }
+}
+```
+
+### AI Agent 工作流（MCP）
+
+1. **添加衣物** — AI 生成 YAML → 调用 `add_item` 工具
+2. **查询衣橱** — 调用 `list_items`，支持类型/季节/风格过滤
+3. **穿搭推荐** — 先查天气 → 再调 `recommend_outfit`
+4. **色彩评分** — 调用 `color_score`，传入 HEX 色值列表
+5. **记录穿着** — 调用 `record_wear`，传入衣物 ID 列表
+6. **反向推导** — 调用 `color_inverse`，传入已知色 + 目标分数
+
+### AI Agent 与 YAML 工作流（v3.2 核心）
+
+v3.2 的核心理念：**AI 写 YAML，spof 处理它**。
+
+```
+用户: "帮我添加一件白色 T 恤"
+  ↓
+AI 生成 item_new.yaml:
+  id: item_023
+  type: 上衣
+  sub_type: 圆领短袖T恤
+  colors:
+    primary: 纯白色
+    primary_hex: "#FFFFFF"
+  ...
+  ↓
+调用: spof add --file item_new.yaml
+  ↓
+spof 验证 → 写入 data/items/item_023.yaml → 更新索引
+```
+
+- 不需要 `--type "上衣" --sub-type "T恤"` 这样的参数
+- 所有字段都在 YAML 中，一目了然
+- 心愿单：`spof add --file item.yaml --wishlist`
+
+## 衣物数据格式（v3.2）
+
+每件衣物是一个独立的 YAML 文件。v3.2 新增 `wear_dates` 和 `wash_frequency` 字段：
+
+```yaml
+id: item_001
+type: 上衣
+sub_type: 短袖衬衫
+colors:
+  primary: 米白色
+  primary_hex: "#F5F0E8"
+  secondary: 无
+  secondary_hex: ""
+  tertiary: ""
+  tertiary_hex: ""
+  pattern: 纯色
+material: 冰丝缎面
+fit: 宽松落肩
+style: [简约, 通勤, 轻商务, 休闲]
+season: [春, 夏, 初秋]
+temperature_range: "18~32"
+occasion: [日常通勤, 外出逛街, 轻商务会面, 休闲约会]
+wear_count: 5
+wear_dates:                          # v3.2: 精确穿着日期
+  - "2026-05-01"
+  - "2026-05-08"
+  - "2026-05-15"
+  - "2026-05-22"
+  - "2026-05-29"
+wash_frequency: 3                    # v3.2: 每穿几次洗一次
+last_worn: "2026-05-29"
+pair_with: [休闲西裤, 直筒牛仔裤]
+restrict: [厚重高领内搭]
+favorite: false
+image: item_001.jpg
+```
+
+### 心愿单 YAML
+
+心愿单与正式衣橱格式相同，存储在 `data/wishlist/`：
+
+```yaml
+id: wish_001
+type: 下装
+sub_type: 高腰阔腿裤
+colors:
+  primary: 黑色
+  primary_hex: "#111111"
+price: 399
+link: "https://example.com/product/123"
+note: "等打折再买"
+```
+
+## 色彩评分系统
+
+### 架构
+
+```
+输入：可变长度的 HEX 色值列表 + 面积占比
+  ↓
+特征提取（42 维 = 27 HSL + 15 OKLab）
+  ↓
+高斯过程模型（Matérn 5/2 核，500 诱导点）
+  ↓
+输出：0-100 协调度分数 → 7 级评分（SSS/SS/S/A/B/C/D）
+```
+
+### 评分等级（基于人类审美分布 P50=63.4）
+
+| 等级 | 分数 | 含义 |
+|------|------|------|
+| SSS | ≥ 85 | 顶级，名画级配色（前 ~8%） |
+| SS | ≥ 75 | 优秀，专业搭配师水准（前 ~20%） |
+| S | ≥ 65 | 出色，有明确审美风格（前 ~35%） |
+| A | ≥ 50 | 良好，和谐不出错（前 ~55%） |
+| B | ≥ 35 | 一般，中规中矩（前 ~80%） |
+| C | ≥ 20 | 偏弱，需要调整（前 ~93%） |
+| D | < 20 | 差，明显不搭（后 ~7%） |
+
+### CLI 用法
+
+```bash
+# 色彩协调度评分
+spof color score --colors '#F5F0E8,#111111'
+
+# 反向推导：已知米白，目标 75 分，补全 1 个颜色
+spof color inverse --known '#F5F0E8' --target 75 --missing 1
+```
+
+## 评分维度
+
+scorer.py 的 6 个评分维度：
+
+| 维度 | 权重 | 实现 |
+|------|------|------|
+| 颜色协调 | 25% | color_math.py GP 模型 |
+| 风格一致 | 20% | 风格标签交集 |
+| 场合匹配 | 20% | occasion 标签匹配 |
+| 天气适配 | 15% | temperature_range 匹配 |
+| 穿着新鲜度 | 10% | wear_count 反比 |
+| 用户偏好 | 10% | profile 风格/颜色匹配 |
+
+## 知识体系
+
+references/ 下的知识文件按决策点组织：
+
+```
+用户问"什么颜色配什么"     → color.md + color_theory.md
+用户问"什么版型适合我"     → silhouette.md
+用户问"怎么搭配"          → wardrobe.md + layering.md
+用户问"某场合穿什么"       → occasion.md
+用户问"什么风格适合"       → style_archetypes.md
+用户问"配饰怎么搭"         → accessories.md
+用户问"鞋子怎么选"         → shoes.md
+用户问"该买什么"           → buying.md
+用户问"搭配对不对"         → mistakes.md
+用户问"怎么洗/保养"        → care.md
+维护色彩模型              → color_pipeline.md
+```
+
+SKILL.md 指示 AI 按需加载，不全部注入以节省 token。
 
 ## 主题系统
 
@@ -184,33 +399,6 @@ python server.py
   --on-dark-soft             → dark-soft 上的文字
 ```
 
-### 实现文件
-
-| 文件 | 职责 |
-|------|------|
-| `frontend/src/App.vue` | `applyTheme()` 函数，设置所有 CSS 变量 |
-| `frontend/src/views/PalettesView.vue` | `generateTheme()` 函数，计算派生颜色 |
-
-### 已知陷阱
-
-#### 主题派生颜色必须完整更新
-`applyTheme()` 必须设置所有 20+ CSS 变量，否则未更新的变量会保持硬编码值。
-例如：`--surface-dark-elevated` 如果不更新，会一直是 `#252520`（黑色），导致深色背景上的文字看不见。
-
-#### 文字色必须根据背景计算
-不能固定 `--ink: #1a1a1a`（深色），因为当 `--canvas` 是深色时，深色文字看不见。
-必须用 `pickTextColor(bg)` 根据背景亮度动态计算：
-```javascript
-function pickTextColor(bg) {
-  const lum = getLuminance(bg)
-  return lum > 0.4 ? '#1a1a1a' : '#f5f0e8'
-}
-```
-
-#### 4 色色卡直接应用
-色卡正好 4 色时直接应用，<4 色填充默认，>4 色弹窗选择。
-不要对 4 色色卡弹窗，用户期望直接切换。
-
 ## 文件依赖链
 
 ```
@@ -228,140 +416,6 @@ scorer.py (搭配评分)
   ↓ 被调用
 SKILL.md 工作流中 AI 调用
 ```
-
-## 色彩评分系统
-
-### 架构
-
-```
-输入：可变长度的 HEX 色值列表 + 面积占比
-  ↓
-特征提取（42 维 = 27 HSL + 15 OKLab）
-  ↓
-高斯过程模型（Matérn 5/2 核，500 诱导点）
-  ↓
-输出：0-100 协调度分数 → 7 级评分（SSS/SS/S/A/B/C/D）
-```
-
-### 关键文件
-
-| 文件 | 职责 |
-|------|------|
-| `train_color_model.py` | 特征定义、模型训练、OKLab 转换 |
-| `like_based_scoring.py` | **唯一特征提取实现**、点赞迁移、7 级评分 |
-| `color_math.py` | 特征提取（通过导入调用）、模型预测、CLI |
-| `scorer.py` | 调用 color_math.py，整合 6 维度评分 |
-
-### 数据源（6400 组色卡）
-
-| 来源 | 数量 | 脚本 |
-|------|------|------|
-| Color Hunt | 2046 | scrape_palettes.py |
-| 色采 (wxsecai) | 4171 | scrape_wxsecai.py |
-| LOL Colors | 105 | scrape_palettes.py |
-| Design Seeds | 48 | scrape_palettes.py |
-| Colormind | 30 | scrape_palettes.py |
-
-### 模型对比
-
-| 模型 | MAE | RMSE | 训练样本 | 说明 |
-|------|-----|------|----------|------|
-| 线性回归 + L2 | 3.38 | 4.45 | 6400 | 旧模型（理论标签） |
-| GP Matérn 5/2 | **6.95** | 12.68 | 5462（500 诱导点） | 当前使用（点赞标签 + 离群剔除 + Sparse GP） |
-
-### 评分等级（基于人类审美分布 P50=63.4）
-
-| 等级 | 分数 | 含义 |
-|------|------|------|
-| SSS | ≥ 85 | 顶级，名画级配色（前 ~8%） |
-| SS | ≥ 75 | 优秀，专业搭配师水准（前 ~20%） |
-| S | ≥ 65 | 出色，有明确审美风格（前 ~35%） |
-| A | ≥ 50 | 良好，和谐不出错（前 ~55%） |
-| B | ≥ 35 | 一般，中规中矩（前 ~80%） |
-| C | ≥ 20 | 偏弱，需要调整（前 ~93%） |
-| D | < 20 | 差，明显不搭（后 ~7%） |
-
-### 关键设计决策
-
-1. **特征唯一实现** — `like_based_scoring.py::extract_features()` 是唯一的特征提取函数，`color_math.py` 通过导入调用，避免两份代码不一致
-2. **点赞迁移** — 用 Color Hunt 的人类点赞训练迁移模型，给无赞色卡预测分数
-3. **离群剔除** — 全黑/全白/霓虹色（饱和度>90）在训练前剔除，避免污染模型
-4. **Sparse GP** — 用 K-Means 聚类选 500 个诱导点，训练速度提升 30 倍（~10 秒 vs ~5 分钟）
-
-```bash
-# 1. 爬取新色卡（可选）
-python scripts/scrape_palettes.py
-python scripts/scrape_wxsecai.py
-
-# 2. 重训模型
-python scripts/train_color_model.py
-
-# 3. 验证
-python scripts/train_color_model.py --verify
-```
-
-## 衣物数据格式
-
-每件衣物是一个独立的 YAML 文件，含 HEX 色值：
-
-```yaml
-id: item_001
-type: 上衣
-sub_type: 短袖衬衫
-colors:
-  primary: 米白色
-  primary_hex: "#F5F0E8"    # 色彩模型使用
-  secondary: 无
-  secondary_hex: ""
-  tertiary: ""
-  tertiary_hex: ""
-  pattern: 纯色
-material: 冰丝缎面
-fit: 宽松落肩
-style: [简约, 通勤, 轻商务, 休闲]
-season: [春, 夏, 初秋]
-temperature_range: "18~32"
-occasion: [日常通勤, 外出逛街, 轻商务会面, 休闲约会]
-wear_count: 0
-last_worn: ""
-pair_with: [休闲西裤, 直筒牛仔裤]
-restrict: [厚重高领内搭]
-favorite: false
-image: item_001.jpg
-```
-
-## 评分维度
-
-scorer.py 的 6 个评分维度：
-
-| 维度 | 权重 | 实现 |
-|------|------|------|
-| 颜色协调 | 25% | color_math.py GP 模型 |
-| 风格一致 | 20% | 风格标签交集 |
-| 场合匹配 | 20% | occasion 标签匹配 |
-| 天气适配 | 15% | temperature_range 匹配 |
-| 穿着新鲜度 | 10% | wear_count 反比 |
-| 用户偏好 | 10% | profile 风格/颜色匹配 |
-
-## 知识体系
-
-references/ 下的 12 个知识文件按决策点组织：
-
-```
-用户问"什么颜色配什么"     → color.md + color_theory.md
-用户问"什么版型适合我"     → silhouette.md
-用户问"怎么搭配"          → wardrobe.md + layering.md
-用户问"某场合穿什么"       → occasion.md
-用户问"什么风格适合"       → style_archetypes.md
-用户问"配饰怎么搭"         → accessories.md
-用户问"鞋子怎么选"         → shoes.md
-用户问"该买什么"           → buying.md
-用户问"搭配对不对"         → mistakes.md
-用户问"怎么洗/保养"        → care.md
-维护色彩模型              → color_pipeline.md
-```
-
-SKILL.md 指示 AI 按需加载，不全部注入以节省 token。
 
 ## Git 提交规范
 
@@ -384,7 +438,7 @@ SKILL.md 指示 AI 按需加载，不全部注入以节省 token。
 `like_based_scoring.py::extract_features()` 是唯一的特征提取实现。`color_math.py` 通过 `from like_based_scoring import extract_features` 调用。不要在 color_math.py 中重新实现特征提取，否则 GP 预测会偏差巨大（已踩坑：OKLab a,b 通道乘了 5 导致分数偏差 15 分）。
 
 ### 2. GP 模型 O(n³) → Sparse GP O(nm²)
-6400 全量 GP 训练约需 5 分钟。当前使用 Sparse GP（500 诱导点），训练 ~10 秒，精度损失 < 5%。数据量增长到 10000+ 时可增加诱导点数量。
+6400 全量 GP 训练约需 5 分钟。当前使用 Sparse GP（500 诱导点），训练 ~10 秒，精度损失 < 5%。
 
 ### 3. data/ 目录被 .gitignore 排除
 个人数据（衣物、画像、历史）不会被上传。但 raw_palettes.json 和模型文件也在 data/ 下，发布时需要通过 export.py 或 setup.py 处理。
@@ -400,3 +454,9 @@ SKILL.md 指示 AI 按需加载，不全部注入以节省 token。
 
 ### 7. Git push 需要代理
 GitHub 连接超时，需要配置代理（端口 7892）才能 push。
+
+### 8. v3.2: YAML 是唯一数据入口
+不要通过 CLI 参数传递衣物字段（`--type`, `--sub-type` 等）。始终通过 `--file` 传入 YAML 文件。这样数据结构可以自由演进，CLI 不需要同步更新参数。
+
+### 9. v3.2: --wishlist 切换目标目录
+`--wishlist` 标志将数据目录从 `data/items/` 切换到 `data/wishlist/`。两个目录结构相同，但互不干扰。

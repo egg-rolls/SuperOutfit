@@ -1,7 +1,7 @@
 ---
 name: superoutfit
 description: "AI 智能穿搭顾问：衣物管理、穿搭推荐、衣橱分析。通过 MCP 工具调用，数据以 YAML 文件存储。"
-version: 3.0.0
+version: 3.2.0
 author: Lirui
 license: MIT
 metadata:
@@ -63,38 +63,36 @@ python D:\Application\SuperOutfit\server.py
 }
 ```
 
-### 非 MCP 模式（CLI 命令）
+### 非 MCP 模式（CLI 命令 `spof`）
 
-如果 MCP 不可用，可使用统一的 CLI 命令：
+如果 MCP 不可用，可使用统一的 CLI 命令 `spof`（v3.2 新命令结构）：
 
 ```bash
-# 衣橱管理
-superoutfit wardrobe list --json
-superoutfit wardrobe add --type "上衣" --sub-type "T恤" --primary-color "黑色"
-superoutfit wardrobe show item_001
-superoutfit wardrobe stats
+# 衣物 CRUD
+spof add --file item.yaml [--wishlist]       # 添加衣物
+spof list [--type X] [--season X] [--wishlist] [--json]  # 列出衣物
+spof show item_001 [--json]                  # 查看详情
+spof edit item_001 --file new.yaml           # 编辑（整文件覆盖）
+spof delete item_001 [--wishlist]            # 删除
 
-# 天气查询
-superoutfit weather --city "大连"
+# 穿着记录
+spof wear add --items item_001,item_002      # 记录今天穿搭
+spof wear wash --items item_001              # 标记已清洗
+spof wear check [--type X]                   # 需要清洗的衣物
+spof wear report [--items X] [--json]        # 穿着报告
 
-# 搭配评分
-superoutfit score --items item_001,item_003 --occasion 通勤 --temp 22
+# 色彩分析
+spof color score --colors '#F5F0E8,#111111'  # 色彩协调度评分
+spof color inverse --known '#F5F0E8' --target 75 --missing 1  # 反向推导
 
-# 色彩协调度
-superoutfit color --items item_001,item_003
-superoutfit color --colors "#F5F0E8,#C4A97D,#111111"
-
-# 色卡管理
-superoutfit palette list --top 10
-superoutfit palette train
-
-# 知识库
-superoutfit knowledge list
-superoutfit knowledge show color.md
-
-# 配置
-superoutfit config
+# 其他
+spof weather [--city X]                      # 天气查询
+spof data export | import                    # 数据导出/导入
+spof system info | gateway up/down/status    # 系统信息/网关管理
+spof update                                  # 更新（git pull）
 ```
+
+> **`--wishlist` 标志：** 将操作目标切换到 `data/wishlist/` 目录（心愿单），与衣物 CRUD 完全一致。
 
 > 完整命令参考见 `D:\Application\SuperOutfit\CLI.md`
 
@@ -173,4 +171,4 @@ hermes curator pin superoutfit
 3. **图片文件名要对应。** `item_001.yaml` 的 image 应该是 `item_001.jpg`。
 4. **HEX 色值影响评分。** 添加衣物时尽量填写 `primary_hex`。
 5. **推荐不要穷举组合。** 直接让 AI 从衣橱中挑选。
-6. **profile.yaml 是推荐质量基石。** 首次使用务必引导用户填写。
+6. **`--wishlist` 切换数据目录。** `spof list --wishlist` 读取 `data/wishlist/`，`spof list` 读取 `data/items/`。所有 CRUD 命令都支持 `--wishlist` 标志，语法完全一致。
