@@ -5,9 +5,11 @@ SuperOutfit CLI — AI 智能穿搭顾问
 6 个 AI 命令:
     spof        衣橱/购物清单 CRUD（add/list/show/edit/delete）
     spof wear   穿着管理（add/wash/check/report）
-    spof color  色彩工具（score/inverse）
+    spof score   色彩和谐度评分
+    spof inverse 反向推导颜色
     spof weather 天气查询
-    spof data   数据导入导出
+    spof export 导出数据
+    spof import 导入数据
     spof info    系统信息
     spof gateway 网关管理（up/down/status）
 """
@@ -73,25 +75,26 @@ def cmd_wear(args):
     wear_main()
 
 
-def cmd_color(args):
-    """色彩工具"""
-    if args.color_action == "score":
-        from color_math import main as color_main
-        argv = []
-        if args.colors:
-            argv.extend(["--colors", args.colors])
-        sys.argv = ["color_math.py"] + argv
-        color_main()
+def cmd_score(args):
+    """色彩和谐度评分"""
+    from color_math import main as color_main
+    argv = []
+    if args.colors:
+        argv.extend(["--colors", args.colors])
+    sys.argv = ["color_math.py"] + argv
+    color_main()
 
-    elif args.color_action == "inverse":
-        if args.method == "search":
-            from color_inverse import suggest_colors
-            known = [c.strip() for c in args.known.split(",")]
-            suggest_colors(known, args.target, args.missing, args.top)
-        else:
-            from color_inverse_global import diverse_global_inverse
-            known = [c.strip() for c in args.known.split(",")]
-            diverse_global_inverse(known, args.target, args.missing, args.samples, args.maxiter)
+
+def cmd_inverse(args):
+    """反向推导颜色"""
+    if args.method == "search":
+        from color_inverse import suggest_colors
+        known = [c.strip() for c in args.known.split(",")]
+        suggest_colors(known, args.target, args.missing, args.top)
+    else:
+        from color_inverse_global import diverse_global_inverse
+        known = [c.strip() for c in args.known.split(",")]
+        diverse_global_inverse(known, args.target, args.missing, args.samples, args.maxiter)
 
 
 def cmd_weather(args):
@@ -108,16 +111,19 @@ def cmd_weather(args):
     weather_main()
 
 
-def cmd_data(args):
-    """数据导入导出"""
-    from data_manager import export_data, import_data
-    if args.data_action == "export":
-        export_data(args.output)
-    elif args.data_action == "import":
-        if not args.file:
-            print("需要 --file")
-            return
-        import_data(args.file, merge=args.merge, force=args.force)
+def cmd_export(args):
+    """导出数据"""
+    from data_manager import export_data
+    export_data(args.output)
+
+
+def cmd_import(args):
+    """导入数据"""
+    from data_manager import import_data
+    if not args.file:
+        print("需要 --file")
+        return
+    import_data(args.file, merge=args.merge, force=args.force)
 
 
 def cmd_info(args):
@@ -226,10 +232,10 @@ def main():
   spof wear add --items item_001,item_002      # 记录穿着
   spof wear check                              # 需清洗的
   spof wear report                             # 穿着报表
-  spof color score --colors "#F5F0E8,#111111"  # 色彩和谐度
-  spof color inverse --known "#F5F0E8" --target 75 --missing 1
+  spof score --colors "#F5F0E8,#111111"       # 色彩和谐度
+  spof inverse --known "#F5F0E8" --target 75 --missing 1
   spof weather                                 # 天气
-  spof data export                             # 导出数据
+  spof export                                  # 导出数据
   spof info                                    # 系统信息
   spof gateway up                              # 启动网关
         """,
@@ -277,18 +283,21 @@ def main():
     p_wear.add_argument("--json", action="store_true")
     p_wear.set_defaults(func=cmd_wear)
 
-    # === color ===
-    p_color = subparsers.add_parser("color", help="色彩工具")
-    p_color.add_argument("color_action", choices=["score", "inverse"])
-    p_color.add_argument("--colors", help="HEX 色值 (逗号分隔)")
-    p_color.add_argument("--known", help="已知颜色 (逗号分隔 HEX)")
-    p_color.add_argument("--target", type=float, help="目标分数")
-    p_color.add_argument("--missing", type=int, help="补全数量")
-    p_color.add_argument("--method", choices=["search", "global"], default="search")
-    p_color.add_argument("--top", type=int, default=5)
-    p_color.add_argument("--samples", type=int, default=3)
-    p_color.add_argument("--maxiter", type=int, default=100)
-    p_color.set_defaults(func=cmd_color)
+    # === score ===
+    p_score = subparsers.add_parser("score", help="色彩和谐度评分")
+    p_score.add_argument("--colors", required=True, help="HEX 色值 (逗号分隔)")
+    p_score.set_defaults(func=cmd_score)
+
+    # === inverse ===
+    p_inv = subparsers.add_parser("inverse", help="反向推导颜色")
+    p_inv.add_argument("--known", required=True, help="已知颜色 (逗号分隔 HEX)")
+    p_inv.add_argument("--target", type=float, required=True, help="目标分数")
+    p_inv.add_argument("--missing", type=int, required=True, help="补全数量")
+    p_inv.add_argument("--method", choices=["search", "global"], default="search")
+    p_inv.add_argument("--top", type=int, default=5)
+    p_inv.add_argument("--samples", type=int, default=3)
+    p_inv.add_argument("--maxiter", type=int, default=100)
+    p_inv.set_defaults(func=cmd_inverse)
 
     # === weather ===
     p_wt = subparsers.add_parser("weather", help="天气查询")
@@ -297,14 +306,17 @@ def main():
     p_wt.add_argument("--lon", type=float)
     p_wt.set_defaults(func=cmd_weather)
 
-    # === data ===
-    p_data = subparsers.add_parser("data", help="数据导入导出")
-    p_data.add_argument("data_action", choices=["export", "import"])
-    p_data.add_argument("--output", "-o")
-    p_data.add_argument("--file", "-f")
-    p_data.add_argument("--merge", action="store_true")
-    p_data.add_argument("--force", action="store_true")
-    p_data.set_defaults(func=cmd_data)
+    # === export ===
+    p_exp = subparsers.add_parser("export", help="导出数据")
+    p_exp.add_argument("--output", "-o", help="导出路径")
+    p_exp.set_defaults(func=cmd_export)
+
+    # === import ===
+    p_imp = subparsers.add_parser("import", help="导入数据")
+    p_imp.add_argument("--file", "-f", required=True, help="导入文件")
+    p_imp.add_argument("--merge", action="store_true", help="合并模式")
+    p_imp.add_argument("--force", action="store_true", help="强制覆盖")
+    p_imp.set_defaults(func=cmd_import)
 
     # === info ===
     p_info = subparsers.add_parser("info", help="系统信息")
