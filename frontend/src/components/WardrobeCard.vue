@@ -1,11 +1,21 @@
 <script setup>
-defineProps({
+const props = defineProps({
   item: Object,
   imgUrl: String,
   color: String
 })
 
-defineEmits(['click'])
+const emit = defineEmits(['click', 'recordWear', 'markWash'])
+
+function handleRecordWear(e) {
+  e.stopPropagation()
+  emit('recordWear', props.item)
+}
+
+function handleMarkWash(e) {
+  e.stopPropagation()
+  emit('markWash', props.item)
+}
 </script>
 
 <template>
@@ -27,9 +37,115 @@ defineEmits(['click'])
         <span v-for="s in (item.style || []).slice(0, 3)" :key="s" class="tag">{{ s }}</span>
       </div>
       <div class="card-meta">
-        <span>{{ item.temperature_range || '?' }}°C</span>
-        <span>穿着 {{ item.wear_count || 0 }} 次</span>
+        <span>
+          <span class="season-icon">🌡</span>
+          {{ item.temperature_range || '?' }}°C
+        </span>
+        <span>
+          <span class="wear-icon">👕</span>
+          穿过 {{ item.wear_count || 0 }} 次
+        </span>
+      </div>
+      <div v-if="item.needs_wash" class="wash-alert">
+        <span class="wash-icon">⚠️</span>
+        <span>需清洗 (已穿{{ (item.wear_count || 0) - (item.wash_count || 0) }}次)</span>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn wear-btn" @click="handleRecordWear">
+          <span class="btn-icon">👟</span>
+          <span>记录穿着</span>
+        </button>
+        <button 
+          class="action-btn wash-btn" 
+          :class="{ 'wash-needed': item.needs_wash }"
+          @click="handleMarkWash"
+        >
+          <span class="btn-icon">🧺</span>
+          <span>标记清洗</span>
+        </button>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-sm);
+  font-size: 12px;
+  color: var(--muted-soft);
+}
+
+.card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.season-icon,
+.wear-icon {
+  font-size: 14px;
+}
+
+.wash-alert {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-xs);
+  padding: 6px 10px;
+  background: #fff3cd;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #856404;
+}
+
+.wash-icon {
+  font-size: 14px;
+}
+
+.card-actions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+  color: var(--body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: var(--surface-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-icon {
+  font-size: 14px;
+}
+
+.wash-needed {
+  border-color: #ffc107;
+  background: #fff8e1;
+}
+
+.wash-needed:hover {
+  background: #ffecb3;
+  border-color: #ff9800;
+}
+</style>

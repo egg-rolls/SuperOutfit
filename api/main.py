@@ -83,6 +83,13 @@ class WardrobeRecordRequest(BaseModel):
     occasion: str = ""
     notes: str = ""
 
+class WearAddRequest(BaseModel):
+    items: str
+    date: str = ""
+
+class WearWashRequest(BaseModel):
+    items: str
+
 class ProfileUpdateRequest(BaseModel):
     name: str | None = None
     gender: str | None = None
@@ -141,6 +148,23 @@ async def wardrobe_record(req: WardrobeRecordRequest):
     if req.occasion: args.extend(["--occasion", req.occasion])
     if req.notes: args.extend(["--notes", req.notes])
     return run_script_json("wardrobe_ops.py", args)
+
+# 穿着管理
+@app.post("/api/wear/add")
+async def wear_add(req: WearAddRequest):
+    args = ["add", "--items", req.items]
+    if req.date: args.extend(["--date", req.date])
+    return run_script_json("wear.py", args)
+
+@app.post("/api/wear/wash")
+async def wear_wash(req: WearWashRequest):
+    return run_script_json("wear.py", ["wash", "--items", req.items])
+
+@app.get("/api/wear/check")
+async def wear_check(type: str = None):
+    args = ["check", "--json"]
+    if type: args.extend(["--type", type])
+    return run_script_json("wear.py", args)
 
 # 天气
 @app.get("/api/weather")

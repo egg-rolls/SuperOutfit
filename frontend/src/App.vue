@@ -14,7 +14,7 @@ import RecommendView from './views/RecommendView.vue'
 
 const activeTab = ref('wardrobe')
 
-const { items, stats, loading: wardrobeLoading, load: loadWardrobe, getImgUrl, getColor, getTypes, getStyles, filterItems, update: updateWardrobeItem } = useWardrobe()
+const { items, stats, loading: wardrobeLoading, load: loadWardrobe, getImgUrl, getColor, getTypes, getStyles, filterItems, update: updateWardrobeItem, recordWear, markWash } = useWardrobe()
 const { profile, load: loadProfile, update: updateProfile } = useProfile()
 const { palettes, load: loadPalettes } = usePalettes()
 const { refs, load: loadRefs, update: updateRef, remove: removeRef } = useRefs()
@@ -107,6 +107,8 @@ onMounted(loadAll)
       :getStyles="getStyles"
       :filterItems="filterItems"
       :updateItem="handleUpdateItem"
+      :recordWear="recordWear"
+      :markWash="markWash"
     />
     
     <RecommendView

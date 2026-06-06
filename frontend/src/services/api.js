@@ -36,6 +36,13 @@ export const api = {
     record: (data) => request('/wardrobe/record', { method: 'POST', body: JSON.stringify(data) })
   },
   
+  // Wear management
+  wear: {
+    add: (items, date = '') => request('/wear/add', { method: 'POST', body: JSON.stringify({ items, date }) }),
+    wash: (items) => request('/wear/wash', { method: 'POST', body: JSON.stringify({ items }) }),
+    check: (type = null) => request(`/wear/check${type ? `?type=${encodeURIComponent(type)}` : ''}`)
+  },
+  
   // Weather
   weather: (city = '大连') => request(`/weather?city=${encodeURIComponent(city)}`),
   

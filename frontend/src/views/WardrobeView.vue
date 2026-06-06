@@ -10,7 +10,9 @@ const props = defineProps({
   getTypes: Function,
   getStyles: Function,
   filterItems: Function,
-  updateItem: Function
+  updateItem: Function,
+  recordWear: Function,
+  markWash: Function
 })
 
 const filter = ref('all')
@@ -35,6 +37,18 @@ function handleSave(itemData) {
   }
   closeModal()
 }
+
+function handleRecordWear(item) {
+  if (props.recordWear) {
+    props.recordWear(item.id)
+  }
+}
+
+function handleMarkWash(item) {
+  if (props.markWash) {
+    props.markWash(item.id)
+  }
+}
 </script>
 
 <template>
@@ -52,6 +66,8 @@ function handleSave(itemData) {
         :imgUrl="getImgUrl(item)"
         :color="getColor(item)"
         @click="openModal"
+        @recordWear="handleRecordWear"
+        @markWash="handleMarkWash"
       />
       <div v-if="!filterItems(filter).length" class="empty">
         <div class="empty-icon">

@@ -97,8 +97,20 @@ def cmd_add(args):
         wear_dates.append(wear_date)
         item["wear_dates"] = wear_dates
 
+        # 自动计算 needs_wash
+        wash_freq = item.get("wash_frequency", 0)
+        if wash_freq > 0:
+            wear_since_wash = item["wear_count"] - item.get("wash_count", 0)
+            item["needs_wash"] = wear_since_wash >= wash_freq
+        else:
+            item["needs_wash"] = False
+
         save_item(item)
-        updated.append({"id": item_id, "wear_count": item["wear_count"]})
+        updated.append({
+            "id": item_id,
+            "wear_count": item["wear_count"],
+            "needs_wash": item.get("needs_wash", False)
+        })
 
     print(json.dumps({"success": True, "date": wear_date, "count": len(updated), "items": updated}, ensure_ascii=False, indent=2))
 
@@ -117,8 +129,9 @@ def cmd_wash(args):
         item_id = item.get("id", item["_file"].replace(".yaml", ""))
         item["wash_count"] = item.get("wear_count", 0)
         item["last_washed"] = today
+        item["needs_wash"] = False  # 清洗后重置
         save_item(item)
-        updated.append({"id": item_id, "wash_count": item["wash_count"]})
+        updated.append({"id": item_id, "wash_count": item["wash_count"], "needs_wash": False})
 
     print(json.dumps({"success": True, "count": len(updated), "items": updated}, ensure_ascii=False, indent=2))
 

@@ -41,6 +41,30 @@ export function useWardrobe() {
     items.value = items.value.filter(i => i.id !== id)
   }
 
+  async function recordWear(id) {
+    const result = await api.wear.add(id)
+    // 更新本地状态
+    const idx = items.value.findIndex(i => i.id === id)
+    if (idx >= 0) {
+      items.value[idx].wear_count = (items.value[idx].wear_count || 0) + 1
+      items.value[idx].last_worn = new Date().toISOString().split('T')[0]
+      items.value[idx].needs_wash = result.items?.[0]?.needs_wash || false
+    }
+    return result
+  }
+
+  async function markWash(id) {
+    const result = await api.wear.wash(id)
+    // 更新本地状态
+    const idx = items.value.findIndex(i => i.id === id)
+    if (idx >= 0) {
+      items.value[idx].needs_wash = false
+      items.value[idx].wash_count = items.value[idx].wear_count || 0
+      items.value[idx].last_washed = new Date().toISOString().split('T')[0]
+    }
+    return result
+  }
+
   function getImgUrl(item) {
     return item.image ? `/api/images/${item.image}` : null
   }
@@ -65,5 +89,5 @@ export function useWardrobe() {
     return items.value
   }
 
-  return { items, stats, loading, load, update, remove, getImgUrl, getColor, getTypes, getStyles, filterItems }
+  return { items, stats, loading, load, update, remove, recordWear, markWash, getImgUrl, getColor, getTypes, getStyles, filterItems }
 }
