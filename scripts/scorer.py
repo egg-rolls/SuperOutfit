@@ -65,18 +65,12 @@ def load_profile():
 def color_score(items):
     """颜色协调性评分 (0-100) — 基于 HSL 数学模型"""
     try:
-        import subprocess
-        skill_dir = Path(__file__).resolve().parent.parent
-        item_ids = [item.get("id", "") for item in items]
-        cmd = [
-            sys.executable or "python",
-            str(skill_dir / "scripts" / "color_math.py"),
-            "--items", ",".join(item_ids),
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        if result.returncode == 0:
-            data = json.loads(result.stdout)
-            return data.get("harmony_score", 70)
+        from scripts.color_math import outfit_color_score_v2, get_item_hex_list
+        hex_list = []
+        for item in items:
+            hex_list.extend(get_item_hex_list(item))
+        if hex_list:
+            return outfit_color_score_v2(hex_list)
     except Exception:
         pass
     # 降级到简单规则

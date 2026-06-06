@@ -515,3 +515,24 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ==================== API 包装函数 ====================
+
+def api_score(hex_list):
+    if not hex_list:
+        return {"error": "没有有效的色值"}
+    score = outfit_color_score_v2(hex_list)
+    theory = outfit_color_score(hex_list)
+    linear_score = model_predict_score_linear(hex_list)
+    gp_score = model_predict_score_gp(hex_list)
+    return {
+        "colors": hex_list,
+        "harmony_score": score,
+        "theory_score": theory,
+        "linear_model_score": linear_score,
+        "gp_model_score": gp_score,
+        "model_available": linear_score is not None,
+        "gp_available": gp_score is not None,
+        "grade": "SSS" if score >= 85 else "SS" if score >= 75 else "S" if score >= 65 else "A" if score >= 50 else "B" if score >= 35 else "C" if score >= 20 else "D",
+    }

@@ -291,3 +291,65 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ==================== API 包装函数（返回 dict，不打印） ====================
+
+def api_record(item_ids, date_str=None):
+    targets = [load_item(i) for i in item_ids]
+    targets = [t for t in targets if t]
+    if not targets:
+        return {"error": "没有匹配的衣物"}
+
+    wear_date = date_str or date.today().isoformat()
+    updated = []
+    for item in targets:
+        item_id = item.get("id", item["_file"].replace(".yaml", ""))
+        item["wear_count"] = item.get("wear_count", 0) + 1
+        item["last_worn"] = wear_date
+        wear_dates = item.get("wear_dates", [])
+        if not isinstance(wear_dates, list):
+            wear_dates = []
+        wear_dates.append(wear_date)
+        item["wear_dates"] = wear_dates
+        wash_freq = item.get("wash_frequency", 0)
+        if wash_freq > 0:
+            wear_since_wash = item["wear_count"] - item.get("wash_count", 0)
+            item["needs_wash"] = wear_since_wash >= wash_freq
+        else:
+            item["needs_wash"] = False
+        save_item(item)
+        updated.append({"id": item_id, "wear_count": item["wear_count"], "needs_wash": item.get("needs_wash", False)})
+    return {"success": True, "date": wear_date, "count": len(updated), "items": updated}
+
+def api_wash(item_ids):
+    targets = [load_item(i) for i in item_ids]
+    targets = [t for t in targets if t]
+    if not targets:
+        return {"error": "没有匹配的衣物"}
+    today = date.today().isoformat()
+    updated = []
+    for item in targets:
+        item_id = item.get("id", item["_file"].replace(".yaml", ""))
+        item["wash_count"] = item.get("wear_count", 0)
+        item["last_washed"] = today
+        item["needs_wash"] = False
+        save_item(item)
+        updated.append({"id": item_id, "wash_count": item["wash_count"], "needs_wash": False})
+    return {"success": True, "count": len(updated), "items": updated}
+
+def api_check(type_filter=None):
+    items = load_items()
+    if type_filter:
+        items = [i for i in items if i.get("type") == type_filter]
+    needs_wash = []
+    for item in items:
+        wash_freq = item.get("wash_frequency", 0)
+        if wash_freq <= 0:
+            continue
+        wear_count = item.get("wear_count", 0)
+        wash_count = item.get("wash_count", 0)
+        if wear_count - wash_count >= wash_freq:
+            item_id = item.get("id", item["_file"].replace(".yaml", ""))
+            needs_wash.append({"id": item_id, "type": item.get("type", ""), "sub_type": item.get("sub_type", ""), "wear_since_wash": wear_count - wash_count, "wash_frequency": wash_freq})
+    return {"needs_wash": needs_wash, "total": len(needs_wash)}

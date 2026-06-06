@@ -259,3 +259,73 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ==================== API 包装函数（返回 dict，不打印） ====================
+
+def api_list(type=None, season=None, wishlist=False):
+    ensure_dirs()
+    target = get_target_dir(wishlist)
+    items = load_all(target)
+    if type:
+        items = [i for i in items if i.get("type") == type]
+    if season:
+        items = [i for i in items if season in i.get("season", []) or "四季" in i.get("season", [])]
+    label = "wishlist" if wishlist else "wardrobe"
+    return {"target": label, "items": items, "total": len(items)}
+
+def api_show(item_id, wishlist=False):
+    target = get_target_dir(wishlist)
+    item = load_item(item_id, target)
+    if not item:
+        return None
+    return {k: v for k, v in item.items() if not k.startswith("_")}
+
+def api_add(item_dict, wishlist=False):
+    ensure_dirs()
+    target = get_target_dir(wishlist)
+    item_id = item_dict.get("id") or next_id(target)
+    item_dict["id"] = item_id
+    item_dict["_file"] = f"{item_id}.yaml"
+    item_dict.setdefault("wear_count", 0)
+    item_dict.setdefault("last_worn", "")
+    item_dict.setdefault("wash_count", 0)
+    item_dict.setdefault("wash_frequency", 0)
+    item_dict.setdefault("last_washed", "")
+    item_dict.setdefault("wear_dates", [])
+    save_item(item_dict, target)
+    return {"success": True, "id": item_id}
+
+def api_update(item_id, new_data, wishlist=False):
+    target = get_target_dir(wishlist)
+    item = load_item(item_id, target)
+    if not item:
+        return {"error": f"未找到 {item_id}"}
+    new_data["id"] = item["id"]
+    new_data["_file"] = item["_file"]
+    for key in ["wear_count", "last_worn", "wash_count", "wash_frequency", "last_washed", "wear_dates"]:
+        if key not in new_data:
+            new_data[key] = item.get(key, 0 if "count" in key else ([] if "dates" in key else ""))
+    save_item(new_data, target)
+    return {"success": True, "id": item_id}
+
+def api_delete(item_id, wishlist=False):
+    target = get_target_dir(wishlist)
+    path = target / f"{item_id}.yaml"
+    if not path.exists():
+        return {"error": f"未找到 {item_id}"}
+    path.unlink()
+    return {"success": True, "id": item_id}
+
+def api_stats():
+    items = load_all(ITEMS_DIR)
+    from collections import Counter
+    type_counts = Counter(i.get("type", "未知") for i in items)
+    season_counts = Counter(s for i in items for s in (i.get("season") or []))
+    total_wears = sum(i.get("wear_count", 0) for i in items)
+    return {
+        "total": len(items),
+        "by_type": dict(type_counts),
+        "by_season": dict(season_counts),
+        "total_wears": total_wears,
+    }

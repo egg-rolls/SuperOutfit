@@ -1,7 +1,6 @@
 """
 SuperOutfit API Server
-FastAPI 后端，通过 subprocess 调用 scripts/ 中的 CLI 工具
-与 MCP server.py 共享同一套脚本，不重复实现
+直接 import scripts/ 中的函数，不 fork 子进程
 """
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +9,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pathlib import Path
 import json
-import subprocess
 import sys
 import yaml
 
@@ -18,11 +16,55 @@ import yaml
 APP_DIR = Path(__file__).parent.parent
 DATA_DIR = APP_DIR / "data"
 SCRIPTS_DIR = APP_DIR / "scripts"
-VENV_DIR = APP_DIR / ".venv"
-PYTHON = str(VENV_DIR / "Scripts" / "python.exe")
+
+# scripts/ 加入 sys.path，支持 from scripts.xxx import yyy
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+# --- 懒加载 scripts（避免启动时加载 GP 模型） ---
+_wo = None
+_we = None
+_wx = None
+_cm = None
+_sc = None
+
+def _get_wardrobe_ops():
+    global _wo
+    if _wo is None:
+        from scripts import wardrobe_ops
+        _wo = wardrobe_ops
+    return _wo
+
+def _get_wear():
+    global _we
+    if _we is None:
+        from scripts import wear
+        _we = wear
+    return _we
+
+def _get_weather():
+    global _wx
+    if _wx is None:
+        from scripts import weather
+        _wx = weather
+    return _wx
+
+def _get_color_math():
+    global _cm
+    if _cm is None:
+        from scripts import color_math
+        _cm = color_math
+    return _cm
+
+def _get_scorer():
+    global _sc
+    if _sc is None:
+        from scripts import scorer
+        _sc = scorer
+    return _sc
 
 # --- FastAPI ---
-app = FastAPI(title="SuperOutfit API", version="2.0.0")
+app = FastAPI(title="SuperOutfit API", version="3.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,25 +72,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# --- 工具函数 ---
-def run_script(name: str, args: list[str] = None, timeout: int = 30) -> str:
-    """运行 scripts/ 下的 Python 脚本"""
-    cmd = [PYTHON, str(SCRIPTS_DIR / name)]
-    if args:
-        cmd.extend(args)
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=f"脚本执行失败: {result.stderr}")
-    return result.stdout.strip()
-
-def run_script_json(name: str, args: list[str] = None) -> dict:
-    """运行脚本并解析 JSON 输出"""
-    output = run_script(name, args)
-    try:
-        return json.loads(output)
-    except json.JSONDecodeError:
-        return {"raw": output}
 
 # --- Pydantic 模型 ---
 class AddItemRequest(BaseModel):
@@ -79,11 +102,6 @@ class OutfitScoreRequest(BaseModel):
     occasion: str = ""
     temperature: int | None = None
 
-class WardrobeRecordRequest(BaseModel):
-    items: str
-    occasion: str = ""
-    notes: str = ""
-
 class WearAddRequest(BaseModel):
     items: str
     date: str = ""
@@ -104,107 +122,106 @@ class ProfileUpdateRequest(BaseModel):
 # --- API 路由 ---
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "2.0.0"}
+    return {"status": "ok", "version": "3.0.0"}
 
 # 衣橱 CRUD
 @app.get("/api/wardrobe")
 async def wardrobe_list(category: str = None, style: str = None, season: str = None):
-    args = ["list", "--json"]
-    if category: args.extend(["--type", category])
-    if style: args.extend(["--style", style])
-    if season: args.extend(["--season", season])
-    result = run_script_json("wardrobe_ops.py", args)
-    # 前端期望数组，兼容 {target, items, total} 和直接数组
-    if isinstance(result, dict) and "items" in result:
-        return result["items"]
-    return result
+    wo = _get_wardrobe_ops()
+    result = wo.api_list(type=category, season=season)
+    return result["items"]
 
 @app.post("/api/wardrobe")
 async def wardrobe_add(req: AddItemRequest):
-    args = ["add"]
-    for key, val in req.model_dump().items():
-        if val is not None and val != "" and val != 0:
-            args.extend([f"--{key.replace('_', '-')}", str(val)])
-    return run_script_json("wardrobe_ops.py", args)
+    wo = _get_wardrobe_ops()
+    item_dict = {
+        "type": req.type,
+        "sub_type": req.sub_type,
+        "colors": {
+            "primary": req.primary_color,
+            "primary_hex": req.primary_hex,
+            "secondary": "",
+            "secondary_hex": "",
+        },
+        "material": req.material,
+        "fit": req.fit,
+        "style": [s.strip() for s in req.style.split(",") if s.strip()] if req.style else [],
+        "season": [s.strip() for s in req.season.split(",") if s.strip()] if req.season else [],
+        "temperature_range": req.temp_range,
+        "occasion": [s.strip() for s in req.occasion.split(",") if s.strip()] if req.occasion else [],
+        "brand": req.brand,
+        "price": req.price,
+        "image": req.image,
+        "favorite": False,
+    }
+    return wo.api_add(item_dict)
 
 @app.get("/api/wardrobe/stats")
 async def wardrobe_stats():
-    # 从列表数据计算统计
-    items = run_script_json("wardrobe_ops.py", ["list", "--json"])
-    if isinstance(items, dict) and "items" in items:
-        items = items["items"]
-    if not isinstance(items, list):
-        return {"total": 0, "by_type": {}, "by_season": {}, "total_wears": 0}
-    from collections import Counter
-    type_counts = Counter(i.get("type", "未知") for i in items)
-    season_counts = Counter(s for i in items for s in (i.get("season") or []))
-    total_wears = sum(i.get("wear_count", 0) for i in items)
-    return {
-        "total": len(items),
-        "by_type": dict(type_counts),
-        "by_season": dict(season_counts),
-        "total_wears": total_wears,
-    }
+    wo = _get_wardrobe_ops()
+    return wo.api_stats()
 
 @app.get("/api/wardrobe/{item_id}")
 async def wardrobe_show(item_id: str):
-    return run_script_json("wardrobe_ops.py", ["show", item_id])
+    wo = _get_wardrobe_ops()
+    item = wo.api_show(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail=f"未找到 {item_id}")
+    return item
 
 @app.put("/api/wardrobe/{item_id}")
 async def wardrobe_update(item_id: str, req: UpdateItemRequest):
-    args = ["update", item_id]
-    if req.wear_count is not None: args.extend(["--wear-count", str(req.wear_count)])
-    if req.last_worn is not None: args.extend(["--last-worn", req.last_worn])
-    if req.favorite is not None: args.extend(["--favorite", str(req.favorite)])
-    return run_script_json("wardrobe_ops.py", args)
+    wo = _get_wardrobe_ops()
+    item = wo.api_show(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail=f"未找到 {item_id}")
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    item.update(updates)
+    return wo.api_update(item_id, item)
 
 @app.delete("/api/wardrobe/{item_id}")
 async def wardrobe_delete(item_id: str):
-    return run_script_json("wardrobe_ops.py", ["delete", item_id])
-
-@app.post("/api/wardrobe/record")
-async def wardrobe_record(req: WardrobeRecordRequest):
-    args = ["record", "--items", req.items]
-    if req.occasion: args.extend(["--occasion", req.occasion])
-    if req.notes: args.extend(["--notes", req.notes])
-    return run_script_json("wardrobe_ops.py", args)
+    wo = _get_wardrobe_ops()
+    result = wo.api_delete(item_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
 # 穿着管理
 @app.post("/api/wear/add")
 async def wear_add(req: WearAddRequest):
-    args = ["add", "--items", req.items]
-    if req.date: args.extend(["--date", req.date])
-    return run_script_json("wear.py", args)
+    we = _get_wear()
+    item_ids = [s.strip() for s in req.items.split(",") if s.strip()]
+    return we.api_record(item_ids, req.date or None)
 
 @app.post("/api/wear/wash")
 async def wear_wash(req: WearWashRequest):
-    return run_script_json("wear.py", ["wash", "--items", req.items])
+    we = _get_wear()
+    item_ids = [s.strip() for s in req.items.split(",") if s.strip()]
+    return we.api_wash(item_ids)
 
 @app.get("/api/wear/check")
 async def wear_check(type: str = None):
-    args = ["check", "--json"]
-    if type: args.extend(["--type", type])
-    return run_script_json("wear.py", args)
+    we = _get_wear()
+    return we.api_check(type)
 
 # 天气
 @app.get("/api/weather")
 async def weather_query(city: str = "大连", date: str = None):
-    args = ["--city", city]
-    if date: args.extend(["--date", date])
-    return run_script_json("weather.py", args)
+    wx = _get_weather()
+    return wx.query_weather(city, date)
 
 # 色彩评分
 @app.post("/api/color/score")
 async def color_score(req: ColorScoreRequest):
-    return run_script_json("color_math.py", ["--colors", ",".join(req.hex_colors)])
+    cm = _get_color_math()
+    return cm.api_score(req.hex_colors)
 
 # 穿搭评分
 @app.post("/api/outfit/score")
 async def outfit_score(req: OutfitScoreRequest):
-    args = ["--items", ",".join(req.item_ids)]
-    if req.occasion: args.extend(["--occasion", req.occasion])
-    if req.temperature: args.extend(["--temp", str(req.temperature)])
-    return run_script_json("scorer.py", args)
+    sc = _get_scorer()
+    return sc.score_outfit(req.item_ids, req.occasion or None, req.temperature)
 
 # 用户画像
 @app.get("/api/profile")
@@ -274,7 +291,7 @@ async def reference_delete(filename: str):
     fpath.unlink()
     return {"filename": filename, "deleted": True}
 
-# 衣物图片 - 直接挂载静态目录，不经过 Python 代码
+# 衣物图片
 images_dir = DATA_DIR / "images"
 if images_dir.exists():
     app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
@@ -296,22 +313,22 @@ async def ws_recommend(websocket: WebSocket):
                     with open(p, "r", encoding="utf-8") as f:
                         profile = yaml.safe_load(f) or {}
 
-                # 获取天气
                 try:
-                    weather_info = run_script_json("weather.py", ["--city", profile.get("city", "大连"), "--json"])
-                    temp = weather_info.get("current", {}).get("temp", "N/A")
-                    desc = weather_info.get("current", {}).get("weather_desc", "未知")
-                except:
+                    wx = _get_weather()
+                    weather_info = wx.query_weather(profile.get("city", "大连"))
+                    temp = weather_info.get("temperature", "N/A")
+                    desc = weather_info.get("condition", "未知")
+                except Exception:
                     temp, desc = "N/A", "未知"
 
-                # 获取衣橱
                 try:
-                    items = run_script_json("wardrobe_ops.py", ["list", "--json"])
+                    wo = _get_wardrobe_ops()
+                    items_data = wo.api_list()
                     wardrobe_summary = "\n".join([
-                        f"- {i.get('name', i.get('type', ''))} ({i.get('type','')}, {i.get('colors', {}).get('primary', '')})"
-                        for i in items[:20]
+                        f"- {i.get('sub_type', i.get('type', ''))} ({i.get('type','')}, {i.get('colors', {}).get('primary', '')})"
+                        for i in items_data.get("items", [])[:20]
                     ])
-                except:
+                except Exception:
                     wardrobe_summary = "衣橱为空"
 
                 prompt = f"""你是穿搭推荐助手。用户问：{body}
@@ -354,7 +371,7 @@ async def ws_recommend(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
 
-# 静态文件 - 前端（优先 dist/，开发模式回退到 frontend/）
+# 静态文件 - 前端
 FRONTEND_DIR = APP_DIR / "frontend"
 DIST_DIR = FRONTEND_DIR / "dist"
 STATIC_DIR = DIST_DIR if DIST_DIR.exists() else FRONTEND_DIR
@@ -368,7 +385,6 @@ async def index():
 
 @app.get("/manifest.json")
 async def manifest():
-    # dist 模式下 manifest 在 dist/ 根目录；开发模式在 public/
     if (STATIC_DIR / "manifest.json").exists():
         return FileResponse(STATIC_DIR / "manifest.json", media_type="application/json")
     return FileResponse(FRONTEND_DIR / "public" / "manifest.json", media_type="application/json")
