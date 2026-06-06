@@ -6,6 +6,7 @@ FastAPI 后端，通过 subprocess 调用 scripts/ 中的 CLI 工具
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
 import json
@@ -273,13 +274,10 @@ async def reference_delete(filename: str):
     fpath.unlink()
     return {"filename": filename, "deleted": True}
 
-# 衣物图片
-@app.get("/api/images/{filename}")
-async def get_image(filename: str):
-    img_path = DATA_DIR / "images" / filename
-    if not img_path.exists():
-        raise HTTPException(status_code=404, detail="图片不存在")
-    return FileResponse(img_path)
+# 衣物图片 - 直接挂载静态目录，不经过 Python 代码
+images_dir = DATA_DIR / "images"
+if images_dir.exists():
+    app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
 
 # AI 推荐 WebSocket
 @app.websocket("/ws/recommend")

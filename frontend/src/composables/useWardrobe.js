@@ -66,7 +66,7 @@ export function useWardrobe() {
   }
 
   function getImgUrl(item) {
-    return item.image ? `/api/images/${item.image}` : null
+    return item.image ? `/images/${item.image}` : null
   }
 
   function getColor(item) {
