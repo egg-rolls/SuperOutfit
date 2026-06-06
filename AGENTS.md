@@ -8,8 +8,8 @@ SuperOutfit 是一个 AI 智能穿搭顾问系统，支持三种入口：
 
 1. **CLI 命令行** — 统一的 `spof` 命令（推荐）
 2. **MCP Server** — 通过 stdio 协议与 AI Agent 交互（12 个工具）
-3. **FastAPI 后端** — REST API，支持前端调用（端口 32201）
-4. **Vue 前端** — Web 界面，Claude 设计风格（端口 32200）
+3. **FastAPI 后端** — REST API + 前端静态服务（端口 32200）
+4. **Vue 前端** — Web 界面，由 API 直接服务
 
 核心能力：
 - **衣物管理** — YAML 文件存储，用户可直接在资源管理器浏览编辑
@@ -119,13 +119,13 @@ D:\Application\SuperOutfit\
 │  MCP Server (server.py)                                     │
 │  └─ 12 个工具（天气/衣橱/推荐/评分/色彩）                      │
 ├─────────────────────────────────────────────────────────────┤
-│  FastAPI Backend (api/main.py, 端口 32201)                  │
-│  └─ 12+ REST 端点 + 静态文件服务                              │
+│  FastAPI Backend (api/main.py, 端口 32200)                  │
+│  └─ 12+ REST 端点 + 前端静态文件服务                          │
 │  └─ 通过 subprocess 调用 scripts/ CLI 工具                   │
 ├─────────────────────────────────────────────────────────────┤
-│  Vue 3 Frontend (frontend/, 端口 32200)                      │
-│  └─ Naive UI + @vicons/ionicons5                            │
-│  └─ Claude 设计风格 + 主题切换                                │
+│  Vue 3 Frontend (frontend/dist/, 由 API 直接服务)             │
+│  └─ 生产模式：构建后由 FastAPI 静态服务                        │
+│  └─ 开发模式：Vite 热重载（独立端口 32201）                    │
 ├─────────────────────────────────────────────────────────────┤
 │  Python Scripts (scripts/)                                  │
 │  └─ wardrobe_ops.py / wear_ops.py / weather.py / scorer.py  │
@@ -141,10 +141,10 @@ spof list --type 上衣 --season 夏
 spof show item_001
 spof wear report --items item_001
 
-# 后端（端口 32201）
-uv run uvicorn api.main:app --host 0.0.0.0 --port 32201 --reload
+# 后端 + 前端（端口 32200）
+uv run uvicorn api.main:app --host 0.0.0.0 --port 32200 --reload
 
-# 前端（端口 32200）
+# 开发模式（前端热重载，端口 32201）
 cd frontend && npm run dev
 
 # MCP Server

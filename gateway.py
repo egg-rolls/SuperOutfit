@@ -9,7 +9,7 @@ SuperOutfit Gateway — 统一服务管理
 
 用法：
   python gateway.py                    # 启动所有服务
-  python gateway.py --port 32200       # 指定前端端口
+  python gateway.py --port 32200       # 指定端口
   python gateway.py --no-frontend      # 不启动前端
   python gateway.py --no-mcp           # 不启动 MCP
   python gateway.py --dev              # 开发模式（前端热重载）
@@ -284,8 +284,8 @@ class Gateway:
         self.python = get_venv_python()
         self._allocated_ports = set()  # 已分配的端口，防止竞态
         self.ports = {
-            "api": args.port + 1,
-            "frontend": args.port,
+            "api": args.port,
+            "frontend": args.port,  # 生产模式与 API 同端口，dev 模式会覆盖
             "mcp": None,
         }
     
@@ -339,23 +339,23 @@ class Gateway:
             print("  ⚠ 前端目录不存在，跳过")
             return
         
-        # 查找空闲端口
-        port = self.find_free_port(self.ports["frontend"])
-        self.ports["frontend"] = port
-        self._allocated_ports.add(port)
-        
         if self.args.dev:
-            # 开发模式：使用 Vite 热重载
+            # 开发模式：使用 Vite 热重载（独立端口）
+            port = self.find_free_port(self.ports["frontend"])
+            self.ports["frontend"] = port
+            self._allocated_ports.add(port)
+            
             cmd = ["npm", "run", "dev", "--", "--port", str(port)]
-            # Windows 上需要用 shell=True
             if sys.platform == "win32":
                 cmd = " ".join(cmd)
+            self.manager.start_service("frontend", cmd, cwd=str(frontend_dir))
+            print(f"    http://localhost:{port}")
         else:
-            # 生产模式：构建后使用静态文件
+            # 生产模式：FastAPI 直接从 dist/ 提供前端，无需单独服务
+            # 只确保 dist/ 存在
             dist_dir = frontend_dir / "dist"
-            if not dist_dir.exists():
+            if not dist_dir.exists() or not (dist_dir / "index.html").exists():
                 print("  构建前端...")
-                # Windows 上 npm 是 .cmd 文件，需要用 shell=True
                 try:
                     subprocess.run(
                         ["npm", "run", "build"],
@@ -366,14 +366,12 @@ class Gateway:
                 except (subprocess.CalledProcessError, FileNotFoundError) as e:
                     print(f"    ⚠ 前端构建失败: {e}")
                     print("    如需前端，请确保 Node.js 和 npm 已安装并加入 PATH")
-                    # 创建空的 dist 目录避免后续错误
                     dist_dir.mkdir(exist_ok=True)
-                    (dist_dir / "index.html").write_text("<h1>SuperOutfit</h1><p>前端未构建，请确保 Node.js 已安装</p>")
+                    (dist_dir / "index.html").write_text("<h1>SuperOutfit</h1><p>前端未构建</p>")
             
-            cmd = [self.python, "-m", "http.server", str(port), "--directory", str(dist_dir)]
-        
-        self.manager.start_service("frontend", cmd, cwd=str(frontend_dir))
-        print(f"    http://localhost:{port}")
+            # 前端与 API 共享同一端口
+            self.ports["frontend"] = self.ports["api"]
+            print(f"    http://localhost:{self.ports['api']} (与 API 同端口)")
     
     def start_mcp(self):
         """启动 MCP Server"""
@@ -487,7 +485,7 @@ class Gateway:
 
 def main():
     parser = argparse.ArgumentParser(description="SuperOutfit Gateway")
-    parser.add_argument("--port", type=int, default=32200, help="前端端口 (默认: 32200, API=前端+1)")
+    parser.add_argument("--port", type=int, default=32200, help="端口 (默认: 32200, API+前端同端口)")
     parser.add_argument("--no-frontend", action="store_true", help="不启动前端")
     parser.add_argument("--no-mcp", action="store_true", help="不启动 MCP")
     parser.add_argument("--dev", action="store_true", help="开发模式")

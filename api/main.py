@@ -337,27 +337,53 @@ async def ws_recommend(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
 
-# 静态文件 - 前端
+# 静态文件 - 前端（优先 dist/，开发模式回退到 frontend/）
 FRONTEND_DIR = APP_DIR / "frontend"
+DIST_DIR = FRONTEND_DIR / "dist"
+STATIC_DIR = DIST_DIR if DIST_DIR.exists() else FRONTEND_DIR
 
 @app.get("/")
 async def index():
-    html_path = FRONTEND_DIR / "index.html"
+    html_path = STATIC_DIR / "index.html"
     if html_path.exists():
         return FileResponse(html_path)
     return HTMLResponse("<h1>SuperOutfit API</h1><p>前端文件未找到</p>")
 
 @app.get("/manifest.json")
 async def manifest():
+    # dist 模式下 manifest 在 dist/ 根目录；开发模式在 public/
+    if (STATIC_DIR / "manifest.json").exists():
+        return FileResponse(STATIC_DIR / "manifest.json", media_type="application/json")
     return FileResponse(FRONTEND_DIR / "public" / "manifest.json", media_type="application/json")
 
 @app.get("/sw.js")
 async def service_worker():
+    if (STATIC_DIR / "sw.js").exists():
+        return FileResponse(STATIC_DIR / "sw.js", media_type="application/javascript")
     return FileResponse(FRONTEND_DIR / "public" / "sw.js", media_type="application/javascript")
+
+@app.get("/favicon.svg")
+async def favicon():
+    if (STATIC_DIR / "favicon.svg").exists():
+        return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+    return FileResponse(FRONTEND_DIR / "public" / "favicon.svg", media_type="image/svg+xml")
 
 @app.get("/icon-{size}.png")
 async def icon(size: str):
+    if (STATIC_DIR / f"icon-{size}.png").exists():
+        return FileResponse(STATIC_DIR / f"icon-{size}.png")
     return FileResponse(FRONTEND_DIR / "public" / f"icon-{size}.png")
+
+@app.get("/assets/{filename:path}")
+async def assets(filename: str):
+    file_path = STATIC_DIR / "assets" / filename
+    if file_path.exists():
+        if filename.endswith(".js"):
+            return FileResponse(file_path, media_type="application/javascript")
+        if filename.endswith(".css"):
+            return FileResponse(file_path, media_type="text/css")
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="资源不存在")
 
 if __name__ == "__main__":
     import uvicorn

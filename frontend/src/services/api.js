@@ -1,5 +1,5 @@
-const API_BASE = 'http://localhost:32201/api'
-const WS_BASE = 'ws://localhost:32201/ws'
+const API_BASE = '/api'
+const WS_BASE = `ws://${location.host}/ws`
 
 async function request(url, options = {}) {
   const response = await fetch(`${API_BASE}${url}`, {
