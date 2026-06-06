@@ -167,6 +167,8 @@ def cmd_gateway(args):
             return
         print(f"Gateway: 运行中 (PID: {status['pid']})")
         ports = status.get("ports", {})
+        if ports.get("frontend"):
+            print(f"  Frontend: http://localhost:{ports['frontend']}")
         if ports.get("api"):
             print(f"  API: http://localhost:{ports['api']}")
 
@@ -427,10 +429,10 @@ def main():
     p_gw = subparsers.add_parser("gateway", aliases=["gw"], help="网关管理")
     p_gw.add_argument("gw_action", nargs="?", default="up",
                       choices=["up", "down", "status"])
-    p_gw.add_argument("--port", type=int, default=32200)
-    p_gw.add_argument("--no-frontend", action="store_true")
-    p_gw.add_argument("--no-mcp", action="store_true")
-    p_gw.add_argument("--dev", action="store_true")
+    p_gw.add_argument("--port", type=int, default=32200, help="前端端口 (默认: 32200, API=前端+1)")
+    p_gw.add_argument("--no-frontend", action="store_true", help="不启动前端")
+    p_gw.add_argument("--no-mcp", action="store_true", help="不启动 MCP")
+    p_gw.add_argument("--dev", action="store_true", help="开发模式（前端热重载）")
     p_gw.set_defaults(func=cmd_gateway)
 
     # === infra ===
