@@ -9,7 +9,7 @@ SuperOutfit Gateway — 统一服务管理
 
 用法：
   python gateway.py                    # 启动所有服务
-  python gateway.py --port 8000        # 指定 API 端口
+  python gateway.py --port 32200       # 指定前端端口
   python gateway.py --no-frontend      # 不启动前端
   python gateway.py --no-mcp           # 不启动 MCP
   python gateway.py --dev              # 开发模式（前端热重载）
@@ -282,20 +282,26 @@ class Gateway:
         self.args = args
         self.manager = ServiceManager()
         self.python = get_venv_python()
+        self._allocated_ports = set()  # 已分配的端口，防止竞态
         self.ports = {
-            "api": args.port,
-            "frontend": args.port + 1,
+            "api": args.port + 1,
+            "frontend": args.port,
             "mcp": None,
         }
     
     def find_free_port(self, start_port: int) -> int:
-        """查找空闲端口"""
+        """查找空闲端口（排除已分配的端口）"""
         import socket
         
         for port in range(start_port, start_port + 100):
+            if port in self._allocated_ports:
+                continue
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
                     s.bind(('', port))
+                    # bind 成功，立刻关闭并记录为已分配
+                    # 进程启动前不会再被其他服务抢占
                     return port
             except OSError:
                 continue
@@ -307,6 +313,7 @@ class Gateway:
         # 查找空闲端口
         port = self.find_free_port(self.ports["api"])
         self.ports["api"] = port
+        self._allocated_ports.add(port)
         
         cmd = [
             self.python, "-m", "uvicorn",
@@ -335,6 +342,7 @@ class Gateway:
         # 查找空闲端口
         port = self.find_free_port(self.ports["frontend"])
         self.ports["frontend"] = port
+        self._allocated_ports.add(port)
         
         if self.args.dev:
             # 开发模式：使用 Vite 热重载
@@ -384,21 +392,46 @@ class Gateway:
         
         import urllib.request
         
+        api_ok = False
+        frontend_ok = False
+        
         start_time = time.time()
         while time.time() - start_time < timeout:
             # 检查 API 服务
-            try:
-                url = f"http://localhost:{self.ports['api']}/api/health"
-                response = urllib.request.urlopen(url, timeout=2)
-                if response.status == 200:
-                    print("  ✓ 服务已就绪")
-                    return True
-            except:
-                pass
+            if not api_ok:
+                try:
+                    url = f"http://localhost:{self.ports['api']}/api/health"
+                    response = urllib.request.urlopen(url, timeout=2)
+                    if response.status == 200:
+                        api_ok = True
+                except Exception:
+                    pass
+            
+            # 检查前端服务（仅在有独立前端端口时）
+            frontend_port = self.ports.get("frontend")
+            if not frontend_ok and frontend_port and frontend_port != self.ports["api"]:
+                try:
+                    url = f"http://localhost:{frontend_port}/"
+                    response = urllib.request.urlopen(url, timeout=2)
+                    if response.status == 200:
+                        frontend_ok = True
+                except Exception:
+                    pass
+            elif frontend_port == self.ports["api"]:
+                # 前端和 API 同端口，API 就绪即前端就绪
+                frontend_ok = api_ok
+            
+            if api_ok and frontend_ok:
+                print("  ✓ 服务已就绪")
+                return True
             
             time.sleep(1)
         
-        print("  ⚠ 服务启动超时")
+        # 超时后报告具体哪个没就绪
+        if not api_ok:
+            print("  ⚠ API 服务启动超时")
+        if not frontend_ok:
+            print("  ⚠ 前端服务启动超时")
         return False
     
     def print_status(self):

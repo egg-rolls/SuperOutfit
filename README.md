@@ -118,12 +118,12 @@ spof gateway    # 启动服务（API + 前端 + MCP）
 # 启动所有服务（API + 前端 + MCP）
 spof gateway
 
-# 浏览器打开 http://localhost:8002
+# 浏览器打开 http://localhost:32200
 ```
 
 Gateway 会自动：
-- 启动 FastAPI 后端（端口 8001）
-- 启动 Vue 前端（端口 8002）
+- 启动 FastAPI 后端（端口 32201）
+- 启动 Vue 前端（端口 32200）
 - 启动 MCP Server（stdio）
 - 自动查找空闲端口
 - 监控服务状态
@@ -156,7 +156,7 @@ spof wear add --items item_001,item_003 --occasion "通勤"
 # 启动后端（不含 MCP）
 spof gateway --no-mcp
 
-# 浏览器打开 http://localhost:8002
+# 浏览器打开 http://localhost:32200
 ```
 
 ### 方式 4：MCP Server
@@ -381,7 +381,7 @@ print(result["total_score"], result["grade"])
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │   FastAPI     │  │   Vue 前端   │  │  MCP Server  │      │
 │  │   (API)       │  │   (Web UI)   │  │  (AI 工具)   │      │
-│  │   :8001       │  │   :8002      │  │   stdio      │      │
+│  │   :32201      │  │   :32200     │  │   stdio      │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 │         │                 │                 │                │
 │         └─────────────────┼─────────────────┘                │

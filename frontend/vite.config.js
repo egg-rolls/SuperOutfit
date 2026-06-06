@@ -8,11 +8,11 @@ export default defineConfig({
     hot: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8001',
+        target: 'http://localhost:32201',
         changeOrigin: true
       },
       '/ws': {
-        target: 'ws://localhost:8001',
+        target: 'ws://localhost:32201',
         ws: true
       }
     }
