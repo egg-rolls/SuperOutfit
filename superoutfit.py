@@ -309,6 +309,22 @@ def cmd_update(args):
 
     print("已是最新" if "Already up to date" in result.stdout else "代码已更新")
 
+    # 重新构建前端
+    frontend_dir = install_dir / "frontend"
+    if frontend_dir.exists() and (frontend_dir / "package.json").exists():
+        print("构建前端...")
+        try:
+            subprocess.run(["npm", "install"], cwd=str(frontend_dir),
+                           capture_output=True, shell=True)
+            build = subprocess.run(["npm", "run", "build"], cwd=str(frontend_dir),
+                                   capture_output=True, shell=True)
+            if build.returncode == 0:
+                print("前端构建完成")
+            else:
+                print("前端构建失败，请手动运行: cd frontend && npm run build")
+        except FileNotFoundError:
+            print("未找到 npm，请确保 Node.js 已安装")
+
 
 def show_banner():
     try:
