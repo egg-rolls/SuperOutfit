@@ -112,7 +112,11 @@ async def wardrobe_list(category: str = None, style: str = None, season: str = N
     if category: args.extend(["--type", category])
     if style: args.extend(["--style", style])
     if season: args.extend(["--season", season])
-    return run_script_json("wardrobe_ops.py", args)
+    result = run_script_json("wardrobe_ops.py", args)
+    # 前端期望数组，兼容 {target, items, total} 和直接数组
+    if isinstance(result, dict) and "items" in result:
+        return result["items"]
+    return result
 
 @app.post("/api/wardrobe")
 async def wardrobe_add(req: AddItemRequest):
@@ -124,7 +128,22 @@ async def wardrobe_add(req: AddItemRequest):
 
 @app.get("/api/wardrobe/stats")
 async def wardrobe_stats():
-    return run_script_json("wardrobe_ops.py", ["stats", "--json"])
+    # 从列表数据计算统计
+    items = run_script_json("wardrobe_ops.py", ["list", "--json"])
+    if isinstance(items, dict) and "items" in items:
+        items = items["items"]
+    if not isinstance(items, list):
+        return {"total": 0, "by_type": {}, "by_season": {}, "total_wears": 0}
+    from collections import Counter
+    type_counts = Counter(i.get("type", "未知") for i in items)
+    season_counts = Counter(s for i in items for s in (i.get("season") or []))
+    total_wears = sum(i.get("wear_count", 0) for i in items)
+    return {
+        "total": len(items),
+        "by_type": dict(type_counts),
+        "by_season": dict(season_counts),
+        "total_wears": total_wears,
+    }
 
 @app.get("/api/wardrobe/{item_id}")
 async def wardrobe_show(item_id: str):
