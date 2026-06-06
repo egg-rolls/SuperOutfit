@@ -2,7 +2,7 @@
 # 复制此文件并重命名为 item_NNN.yaml，然后填写信息
 
 id: item_000                      # 唯一 ID，格式 item_NNN
-type: ""                          # 上衣 | 裤子 | 外套 | 鞋子 | 配饰
+type: ""                          # 上衣 | 下装 | 外套 | 鞋子 | 配饰
 sub_type: ""                      # T恤 | 衬衫 | 牛仔裤 | 西装裤 | 运动鞋 | ...
 
 # 外观
@@ -26,8 +26,6 @@ purchase_date: ""                 # 购买日期 YYYY-MM-DD
 
 # 状态
 condition: "完好"                 # 完好 | 轻微磨损 | 需修补 | 待处理
-wear_count: 0                     # 穿着次数
-last_worn: ""                     # 最后穿着日期 YYYY-MM-DD
 
 # 搭配属性
 style: []                         # 风格标签：通勤/简约/轻熟/运动/街头/...
@@ -57,3 +55,12 @@ tags: []                          # 自定义标签
 
 # 图片（文件名，实际图片放在 ../images/ 目录）
 image: ""                         # 如 item_001.jpg
+
+# 穿着管理（自动维护，无需手动填写）
+wear_count: 0                     # 穿着次数
+last_worn: ""                     # 最后穿着日期 YYYY-MM-DD
+wear_dates: []                    # 每次穿着日期记录
+wash_frequency: 1                 # 建议穿几次后洗（外衣类可设 3-5）
+wash_count: 0                     # 上次清洗时的穿着次数
+last_washed: ""                   # 上次清洗日期 YYYY-MM-DD
+needs_wash: false                 # 是否需要清洗（自动计算）
