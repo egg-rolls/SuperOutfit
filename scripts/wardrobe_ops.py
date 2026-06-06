@@ -138,20 +138,10 @@ def cmd_list(args):
         items = [i for i in items if args.season in i.get("season", []) or "四季" in i.get("season", [])]
 
     if args.json:
-        # 简化输出
         result = []
         for item in items:
-            result.append({
-                "id": item.get("id", ""),
-                "type": item.get("type", ""),
-                "sub_type": item.get("sub_type", ""),
-                "colors": item.get("colors", {}),
-                "season": item.get("season", []),
-                "style": item.get("style", []),
-                "wear_count": item.get("wear_count", 0),
-                "price": item.get("price", 0),
-                "favorite": item.get("favorite", False),
-            })
+            # 直接返回完整 YAML 数据，前端自动同步
+            result.append(item)
         label = "wishlist" if args.wishlist else "wardrobe"
         print(json.dumps({"target": label, "items": result, "total": len(result)}, ensure_ascii=False, indent=2))
         return
