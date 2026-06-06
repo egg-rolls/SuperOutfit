@@ -292,6 +292,9 @@ def cmd_update(args):
     # Clean untracked files that would block merge
     git("clean", "-fd", "scripts/")
 
+    # 记录当前 commit
+    old_head = git("rev-parse", "HEAD").stdout.strip()
+
     # Pull
     result = git("pull", "origin", "master")
     if result.returncode != 0:
@@ -307,7 +310,23 @@ def cmd_update(args):
             print("本地修改与远程冲突，已丢弃本地修改（远程版本为准）")
             git("stash", "drop")
 
-    print("已是最新" if "Already up to date" in result.stdout else "代码已更新")
+    new_head = git("rev-parse", "HEAD").stdout.strip()
+
+    if old_head == new_head:
+        print("已是最新")
+    else:
+        print("代码已更新\n")
+        # 显示新 commit 列表
+        log = git("log", f"{old_head}..{new_head}", "--oneline", "--no-merges")
+        if log.stdout.strip():
+            for line in log.stdout.strip().split("\n"):
+                print(f"  {line}")
+        # 显示变更文件统计
+        diff = git("diff", "--stat", f"{old_head}..{new_head}")
+        if diff.stdout.strip():
+            print()
+            for line in diff.stdout.strip().split("\n"):
+                print(f"  {line}")
 
     # 重新构建前端
     frontend_dir = install_dir / "frontend"
