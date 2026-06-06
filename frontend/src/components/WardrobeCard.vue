@@ -27,8 +27,8 @@ function handleMarkWash(e) {
       </svg>
     </div>
     <div class="card-body">
-      <div class="card-type">{{ item.type }} · {{ item.sub_type }}</div>
-      <div class="card-name">{{ item.colors?.primary }} {{ item.sub_type }}</div>
+      <div class="card-type">{{ item.type }}</div>
+      <div class="card-name">{{ item.sub_type }}</div>
       <div class="card-color">
         <span class="card-color-dot" :style="{ background: color }"></span>
         {{ item.colors?.primary }}{{ item.colors?.secondary ? ' / ' + item.colors.secondary : '' }}
@@ -46,10 +46,6 @@ function handleMarkWash(e) {
           穿过 {{ item.wear_count || 0 }} 次
         </span>
       </div>
-      <div v-if="item.needs_wash" class="wash-alert">
-        <span class="wash-icon">⚠️</span>
-        <span>需清洗 (已穿{{ (item.wear_count || 0) - (item.wash_count || 0) }}次)</span>
-      </div>
       <div class="card-actions">
         <button class="action-btn wear-btn" @click="handleRecordWear">
           <span class="btn-icon">👟</span>
@@ -61,7 +57,8 @@ function handleMarkWash(e) {
           @click="handleMarkWash"
         >
           <span class="btn-icon">🧺</span>
-          <span>标记清洗</span>
+          <span v-if="item.needs_wash">标记清洗</span>
+          <span v-else>已清洗</span>
         </button>
       </div>
     </div>

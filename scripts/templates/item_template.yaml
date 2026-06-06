@@ -3,13 +3,13 @@
 
 id: item_000                      # 唯一 ID，格式 item_NNN
 type: ""                          # 上衣 | 下装 | 外套 | 鞋子 | 配饰
-sub_type: ""                      # T恤 | 衬衫 | 牛仔裤 | 西装裤 | 运动鞋 | ...
+sub_type: ""                      # ≤10字：T恤 | 衬衫 | 牛仔裤 | 西装裤 | 运动鞋 | ...
 
 # 外观
 colors:
-  primary: ""                     # 主色名称（必须填）
+  primary: ""                     # ≤5字：主色名称（必须填）
   primary_hex: ""                 # 主色 HEX 色值，如 #F5F0E8
-  secondary: ""                   # 副色/花纹名称（可选）
+  secondary: ""                   # ≤5字：副色/花纹名称（可选）
   secondary_hex: ""               # 副色 HEX 色值
   tertiary: ""                    # 第三色（可选，如拼色设计）
   tertiary_hex: ""                # 第三色 HEX 色值

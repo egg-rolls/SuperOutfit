@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pathlib import Path
 import json
 import subprocess
@@ -53,8 +53,8 @@ def run_script_json(name: str, args: list[str] = None) -> dict:
 # --- Pydantic 模型 ---
 class AddItemRequest(BaseModel):
     type: str
-    sub_type: str
-    primary_color: str
+    sub_type: str = Field(..., max_length=10, description="≤10字")
+    primary_color: str = Field(..., max_length=5, description="≤5字")
     primary_hex: str = ""
     material: str = ""
     fit: str = "常规"

@@ -43,25 +43,15 @@ export function useWardrobe() {
 
   async function recordWear(id) {
     const result = await api.wear.add(id)
-    // 更新本地状态
-    const idx = items.value.findIndex(i => i.id === id)
-    if (idx >= 0) {
-      items.value[idx].wear_count = (items.value[idx].wear_count || 0) + 1
-      items.value[idx].last_worn = new Date().toISOString().split('T')[0]
-      items.value[idx].needs_wash = result.items?.[0]?.needs_wash || false
-    }
+    // 重新加载后端数据，获取 needs_wash 等计算字段
+    await load()
     return result
   }
 
   async function markWash(id) {
     const result = await api.wear.wash(id)
-    // 更新本地状态
-    const idx = items.value.findIndex(i => i.id === id)
-    if (idx >= 0) {
-      items.value[idx].needs_wash = false
-      items.value[idx].wash_count = items.value[idx].wear_count || 0
-      items.value[idx].last_washed = new Date().toISOString().split('T')[0]
-    }
+    // 重新加载后端数据，获取 needs_wash 等计算字段
+    await load()
     return result
   }
 
