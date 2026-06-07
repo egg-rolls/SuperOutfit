@@ -349,11 +349,11 @@ def show_banner():
     try:
         title = Text("SPOF", style="bold magenta")
         subtitle = Text("AI 智能穿搭顾问", style="dim")
-        version = Text("v3.2.0", style="green")
+        version = Text("v3.2.1", style="green")
         content = Text.assemble("\n", "  ", title, "\n", "  ", subtitle, "\n", "  ", version, "\n")
         console.print(Panel(content, border_style="blue", expand=False))
     except:
-        print("SuperOutfit v3.2.0")
+        print("SuperOutfit v3.2.1")
 
 
 # ==================== Main ====================

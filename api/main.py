@@ -64,7 +64,7 @@ def _get_scorer():
     return _sc
 
 # --- FastAPI ---
-app = FastAPI(title="SuperOutfit API", version="3.0.0")
+app = FastAPI(title="SuperOutfit API", version="3.2.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -122,7 +122,7 @@ class ProfileUpdateRequest(BaseModel):
 # --- API 路由 ---
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "3.0.0"}
+    return {"status": "ok", "version": "3.2.1"}
 
 # 衣橱 CRUD
 @app.get("/api/wardrobe")
@@ -300,6 +300,7 @@ if images_dir.exists():
 @app.websocket("/ws/recommend")
 async def ws_recommend(websocket: WebSocket):
     await websocket.accept()
+    conn = None
     try:
         while True:
             data = await websocket.receive_json()
@@ -367,9 +368,24 @@ async def ws_recommend(websocket: WebSocket):
                 except Exception as e:
                     await websocket.send_json({"event": "chat", "body": f"AI 服务不可用: {str(e)}"})
                     await websocket.send_json({"event": "end", "body": ""})
+                finally:
+                    # 确保关闭 Ollama 连接
+                    if conn:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
+                        conn = None
 
     except WebSocketDisconnect:
         pass
+    finally:
+        # 客户端断开时清理残留连接
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 # 静态文件 - 前端
 FRONTEND_DIR = APP_DIR / "frontend"

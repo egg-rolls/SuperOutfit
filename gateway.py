@@ -173,8 +173,9 @@ class ServiceManager:
     
     def __init__(self):
         self.services: Dict[str, subprocess.Popen] = {}
+        self._log_files: Dict[str, object] = {}
         self.running = True
-        
+
         # 注册信号处理
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -188,23 +189,27 @@ class ServiceManager:
     def start_service(self, name: str, cmd: list, cwd: str = None, env: dict = None) -> subprocess.Popen:
         """启动服务"""
         print(f"  启动 {name}...")
-        
+
         # 合并环境变量
         process_env = os.environ.copy()
         if env:
             process_env.update(env)
-        
+
+        # 将子进程输出重定向到日志文件，避免 PIPE 缓冲区满导致死锁
+        log_dir = ROOT_DIR / ".logs"
+        log_dir.mkdir(exist_ok=True)
+        log_file = open(log_dir / f"{name}.log", "a", encoding="utf-8")
+
         process = subprocess.Popen(
             cmd,
             cwd=cwd or str(ROOT_DIR),
             env=process_env,
-            stdout=subprocess.PIPE,
+            stdout=log_file,
             stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
         )
-        
+
         self.services[name] = process
+        self._log_files[name] = log_file
         update_service_pid(name, process.pid)
         return process
     
@@ -212,16 +217,24 @@ class ServiceManager:
         """停止服务"""
         if name in self.services:
             process = self.services[name]
-            
+
             if process.poll() is None:
                 print(f"  停止 {name}...")
                 process.terminate()
-                
+
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     process.kill()
-            
+
+            # 关闭日志文件句柄
+            if name in self._log_files:
+                try:
+                    self._log_files[name].close()
+                except Exception:
+                    pass
+                del self._log_files[name]
+
             del self.services[name]
     
     def stop_all(self):
@@ -250,28 +263,31 @@ class ServiceManager:
     def monitor(self):
         """监控服务"""
         reported_exit = set()
-        
+
         while self.running:
             for name, process in list(self.services.items()):
                 if process.poll() is not None:
                     # 服务已退出
                     if name not in reported_exit:
-                        output = process.stdout.read() if process.stdout else ""
-                        
-                        print(f"\n⚠ {name} 服务已退出 (返回码: {process.returncode})")
-                        if output:
-                            lines = output.strip().split("\n")
-                            for line in lines[-10:]:
-                                print(f"  {line}")
-                        
+                        print(f"\n[WARN] {name} 服务已退出 (返回码: {process.returncode})")
+                        # 从日志文件读取最后几行输出
+                        log_path = ROOT_DIR / ".logs" / f"{name}.log"
+                        if log_path.exists():
+                            try:
+                                lines = log_path.read_text(encoding="utf-8", errors="replace").strip().split("\n")
+                                for line in lines[-10:]:
+                                    print(f"  {line}")
+                            except Exception:
+                                pass
+
                         reported_exit.add(name)
-                    
+
                     # 如果是 API 服务退出，停止所有服务
                     if name == "api":
                         print("\nAPI 服务退出，停止所有服务...")
                         self.stop_all()
                         return
-            
+
             time.sleep(1)
 
 
@@ -288,6 +304,8 @@ class Gateway:
             "frontend": args.port,  # 生产模式与 API 同端口，dev 模式会覆盖
             "mcp": None,
         }
+        # dev 模式下前端从 API 端口+1 开始查找，确保 Vite proxy 指向正确的 API 端口
+        self._frontend_start_port = args.port + 1
     
     def find_free_port(self, start_port: int) -> int:
         """查找空闲端口（排除已分配的端口）"""
@@ -336,12 +354,13 @@ class Gateway:
         
         frontend_dir = ROOT_DIR / "frontend"
         if not frontend_dir.exists():
-            print("  ⚠ 前端目录不存在，跳过")
+            print("  [WARN] 前端目录不存在，跳过")
             return
         
         if self.args.dev:
             # 开发模式：使用 Vite 热重载（独立端口）
-            port = self.find_free_port(self.ports["frontend"])
+            # 从 API 端口+1 开始查找，确保 Vite proxy 指向正确的 API 端口
+            port = self.find_free_port(self._frontend_start_port)
             self.ports["frontend"] = port
             self._allocated_ports.add(port)
             
@@ -364,7 +383,7 @@ class Gateway:
                         check=True
                     )
                 except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                    print(f"    ⚠ 前端构建失败: {e}")
+                    print(f"    [WARN] 前端构建失败: {e}")
                     print("    如需前端，请确保 Node.js 和 npm 已安装并加入 PATH")
                     dist_dir.mkdir(exist_ok=True)
                     (dist_dir / "index.html").write_text("<h1>SuperOutfit</h1><p>前端未构建</p>")
@@ -420,16 +439,16 @@ class Gateway:
                 frontend_ok = api_ok
             
             if api_ok and frontend_ok:
-                print("  ✓ 服务已就绪")
+                print("  [OK] 服务已就绪")
                 return True
             
             time.sleep(1)
         
         # 超时后报告具体哪个没就绪
         if not api_ok:
-            print("  ⚠ API 服务启动超时")
+            print("  [WARN] API 服务启动超时")
         if not frontend_ok:
-            print("  ⚠ 前端服务启动超时")
+            print("  [WARN] 前端服务启动超时")
         return False
     
     def print_status(self):
@@ -442,7 +461,7 @@ class Gateway:
         status = self.manager.get_status()
         
         for name, info in status.items():
-            state = "✓ 运行中" if info["running"] else "✗ 已停止"
+            state = "[OK] 运行中" if info["running"] else "[X] 已停止"
             port = self.ports.get(name)
             url = f"http://localhost:{port}" if port else "stdio://"
             

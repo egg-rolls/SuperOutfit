@@ -1,5 +1,36 @@
 # SuperOutfit 更新日志
 
+## v3.2.1 — 2026-06-07
+
+### 修复：Gateway 刷新瘫痪问题
+
+多次刷新前端导致 Gateway 服务器完全卡死，无法响应任何请求。
+
+**根因分析：**
+1. `gateway.py` 启动 uvicorn 子进程时使用 `stdout=subprocess.PIPE`，但父进程从不读取管道。Windows 管道缓冲区仅 ~4KB，前端每次刷新触发 5-6 个并发请求的日志输出，缓冲区写满后 uvicorn 的写入阻塞，整个异步事件循环冻结。
+2. `/ws/recommend` WebSocket handler 在客户端断开时未关闭到 Ollama 的 HTTP 连接，导致连接和线程泄漏。
+3. Vite 代理端口硬编码为 32201，但 API 默认端口为 32200，dev 模式下代理指向错误端口。
+
+**修复内容：**
+- **`gateway.py`** — 子进程输出重定向到 `.logs/{name}.log` 文件，彻底消除 PIPE 缓冲区死锁；前端端口从 API 端口+1 开始分配，确保端口分配顺序正确；修复 Windows 控制台 GBK 编码导致的 Unicode 报错
+- **`api/main.py`** — WebSocket handler 添加 `try/finally` 确保 Ollama 连接在客户端断开时被关闭
+- **`frontend/vite.config.js`** — 代理目标从 `32201` 改为 `32200`（API 默认端口）
+- **`.gitignore`** — 添加 `.logs/` 目录
+
+**测试结果：**
+- 6 个端点并发请求：6/6 成功
+- 3 轮 x 6 并发请求（模拟多次 F5）：18/18 成功
+- Gateway 正常启停，无残留进程
+
+### 版本号统一
+
+修复各文件版本号不一致的问题：
+- `pyproject.toml`: 3.1.0 → 3.2.1
+- `api/main.py`: 3.0.0 → 3.2.1
+- `README.md`: 3.2.0 → 3.2.1
+
+---
+
 ## v3.2.0 — 2026-06-05
 
 ### 核心变更：AI 驱动架构重构

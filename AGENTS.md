@@ -1,4 +1,4 @@
-# AGENTS.md - SuperOutfit v3.2 开发指南
+# AGENTS.md - SuperOutfit v3.2.1 开发指南
 
 > 本文档指导工程师（包括 AI Agent）开发和维护 SuperOutfit 项目。
 
@@ -111,7 +111,7 @@ D:\Application\SuperOutfit\
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                       SuperOutfit v3.2                       │
+│                      SuperOutfit v3.2.1                      │
 ├─────────────────────────────────────────────────────────────┤
 │  CLI (superoutfit.py → spof)                                │
 │  └─ 统一命令入口：add/list/show/edit/delete/wear/color/...   │
@@ -125,7 +125,7 @@ D:\Application\SuperOutfit\
 ├─────────────────────────────────────────────────────────────┤
 │  Vue 3 Frontend (frontend/dist/, 由 API 直接服务)             │
 │  └─ 生产模式：构建后由 FastAPI 静态服务                        │
-│  └─ 开发模式：Vite 热重载（独立端口 32201）                    │
+│  └─ 开发模式：Vite 热重载（独立端口，API端口+1）               │
 ├─────────────────────────────────────────────────────────────┤
 │  Python Scripts (scripts/)                                  │
 │  └─ wardrobe_ops.py / wear_ops.py / weather.py / scorer.py  │
@@ -141,13 +141,16 @@ spof list --type 上衣 --season 夏
 spof show item_001
 spof wear report --items item_001
 
-# 后端 + 前端（端口 32200）
+# Gateway 一键启动（推荐）
+spof gateway                    # 启动 API + 前端（端口 32200）
+spof gateway --dev              # 开发模式（前端热重载，独立端口）
+spof gateway --no-frontend      # 仅 API 后端
+spof gateway --no-mcp           # 不启动 MCP
+
+# 手动启动后端（仅调试用）
 uv run uvicorn api.main:app --host 0.0.0.0 --port 32200 --reload
 
-# 开发模式（前端热重载，端口 32201）
-cd frontend && npm run dev
-
-# MCP Server
+# MCP Server（由 MCP 客户端自动启动）
 python server.py
 ```
 
@@ -460,3 +463,9 @@ GitHub 连接超时，需要配置代理（端口 7892）才能 push。
 
 ### 9. v3.2: --wishlist 切换目标目录
 `--wishlist` 标志将数据目录从 `data/items/` 切换到 `data/wishlist/`。两个目录结构相同，但互不干扰。
+
+### 10. v3.2.1: Gateway 子进程输出必须重定向到文件
+`gateway.py` 启动子进程时**不能使用 `stdout=subprocess.PIPE`**。Windows 管道缓冲区仅 ~4KB，父进程不读取时，uvicorn 的日志输出会写满缓冲区并阻塞整个事件循环，导致服务器瘫痪。已改为写入 `.logs/{name}.log` 文件。如需查看子进程输出，读取日志文件而非 PIPE。
+
+### 11. v3.2.1: WebSocket handler 必须清理外部连接
+`api/main.py` 的 `/ws/recommend` 端点在客户端断开时，必须关闭到 Ollama 的 `http.client.HTTPConnection`。否则连接和线程泄漏，多次刷新后耗尽资源。使用 `try/finally` 确保连接关闭。
