@@ -423,12 +423,11 @@ a:hover { text-decoration: underline; }
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(20, 20, 19, 0.6);
+  background: rgba(20, 20, 19, 0.65);
   z-index: 100;
   align-items: center;
   justify-content: center;
   padding: var(--space-lg);
-  backdrop-filter: blur(4px);
 }
 
 .modal-overlay.show {
