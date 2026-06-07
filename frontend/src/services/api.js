@@ -1,5 +1,4 @@
 const API_BASE = '/api'
-const WS_BASE = `ws://${location.host}/ws`
 
 async function request(url, options = {}) {
   const response = await fetch(`${API_BASE}${url}`, {
@@ -89,30 +88,5 @@ export const api = {
     get: (filename) => request(`/references/${filename}`),
     update: (filename, content) => request(`/references/${filename}`, { method: 'PUT', body: JSON.stringify({ content }) }),
     delete: (filename) => request(`/references/${filename}`, { method: 'DELETE' })
-  }
-}
-
-export function connectRecommendWS(onMessage, onEnd) {
-  const ws = new WebSocket(`${WS_BASE}/recommend`)
-  
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data)
-    if (data.event === 'chat') {
-      onMessage(data.body)
-    } else if (data.event === 'end') {
-      onEnd?.()
-    }
-  }
-  
-  ws.onerror = (error) => {
-    console.error('WebSocket error:', error)
-    onEnd?.()
-  }
-  
-  return {
-    send: (message) => {
-      ws.send(JSON.stringify({ event: 'chat', body: message }))
-    },
-    close: () => ws.close()
   }
 }

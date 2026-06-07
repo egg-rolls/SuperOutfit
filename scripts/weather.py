@@ -196,16 +196,27 @@ def main():
     parser = argparse.ArgumentParser(description="SuperOutfit 天气查询")
     parser.add_argument("--city", default=None, help="城市名称（默认从配置读取）")
     parser.add_argument("--date", help="日期 YYYY-MM-DD（默认今天）")
+    parser.add_argument("--json", action="store_true", help="输出 JSON")
     parser.add_argument("--list-cities", action="store_true", help="列出支持的城市")
-    
+
     args = parser.parse_args()
-    
+
     if args.list_cities:
-        print("支持的城市：")
-        for city in sorted(CITY_COORDS.keys()):
-            print(f"  {city}")
+        try:
+            from output import console
+            from rich.table import Table
+            from rich import box
+            t = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8", title="支持的城市", title_style="bold #cc785c")
+            t.add_column("城市")
+            for city in sorted(CITY_COORDS.keys()):
+                t.add_row(city)
+            console.print(t)
+        except ImportError:
+            print("支持的城市：")
+            for city in sorted(CITY_COORDS.keys()):
+                print(f"  {city}")
         return
-    
+
     # 从配置获取默认城市
     city = args.city
     if not city:
@@ -214,9 +225,48 @@ def main():
             city = get_city()
         except ImportError:
             city = "大连"
-    
+
     result = query_weather(city, args.date)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        try:
+            from output import console, kv_pairs
+            from rich.panel import Panel
+            from rich.table import Table
+            from rich import box
+
+            temp = result.get("temperature", "N/A")
+            condition = result.get("condition", "未知")
+            humidity = result.get("humidity", "N/A")
+            wind = result.get("wind_speed", "N/A")
+            high = result.get("high", "N/A")
+            low = result.get("low", "N/A")
+            city_name = result.get("city", city)
+            date = result.get("date", "today")
+
+            # 天气图标
+            icons = {"晴": "☀", "多云": "⛅", "阴": "☁", "雨": "🌧", "雪": "❄", "雾": "🌫", "风": "💨"}
+            icon = icons.get(condition, "🌤")
+
+            t = Table(box=None, show_header=False, padding=(0, 2))
+            t.add_column(style="dim", min_width=10)
+            t.add_column()
+            t.add_row("天气", f"{icon} {condition}")
+            t.add_row("温度", f"{temp}°C")
+            if high != "N/A" and low != "N/A":
+                t.add_row("范围", f"{low}°C ~ {high}°C")
+            if humidity != "N/A":
+                t.add_row("湿度", f"{humidity}%")
+            if wind != "N/A":
+                t.add_row("风速", f"{wind} km/h")
+
+            console.print()
+            console.print(Panel(t, title=f"天气 · {city_name} · {date}", border_style="#cc785c", box=box.ROUNDED, expand=False))
+            console.print()
+        except ImportError:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     main()

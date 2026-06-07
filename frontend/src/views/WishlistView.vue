@@ -1,19 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useWishlistStore } from '../stores/wishlist'
 import WishlistCard from '../components/WishlistCard.vue'
 
-const props = defineProps({
-  items: Array,
-  getImgUrl: Function,
-  getColor: Function,
-  getTypes: Function,
-  getStyles: Function,
-  filterItems: Function,
-  moveToWardrobe: Function,
-  removeItem: Function
-})
-
-const emit = defineEmits(['refreshWardrobe'])
+const store = useWishlistStore()
 
 const filter = ref('all')
 const searchText = ref('')
@@ -21,7 +11,6 @@ const showSearch = ref(false)
 const showAddTag = ref(false)
 const newTagText = ref('')
 
-// 自定义标签（持久化到 localStorage）
 const STORAGE_KEY = 'superoutfit_wishlist_tags'
 const customTags = ref(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'))
 
@@ -45,16 +34,12 @@ function removeCustomTag(tag) {
   if (filter.value === 'tag:' + tag) filter.value = 'all'
 }
 
-function setFilter(val) {
-  filter.value = val
-}
-
+function setFilter(val) { filter.value = val }
 function toggleSearch() {
   showSearch.value = !showSearch.value
   if (!showSearch.value) searchText.value = ''
 }
 
-// 分类映射
 const CATEGORY_MAP = {
   '上衣': ['上衣'],
   '下装': ['下装', '裤', '裙', '裤子'],
@@ -66,11 +51,8 @@ function getCategory(item) {
   return '配饰'
 }
 
-// 过滤逻辑
 const filteredItems = computed(() => {
-  let result = props.items
-
-  // 分类过滤
+  let result = store.items
   if (filter.value === '上衣' || filter.value === '下装' || filter.value === '配饰') {
     result = result.filter(i => getCategory(i) === filter.value)
   } else if (filter.value.startsWith('tag:')) {
@@ -83,8 +65,6 @@ const filteredItems = computed(() => {
       (i.colors?.primary || '').toLowerCase().includes(tag)
     )
   }
-
-  // 搜索文本
   if (searchText.value) {
     const q = searchText.value.toLowerCase()
     result = result.filter(i =>
@@ -95,86 +75,46 @@ const filteredItems = computed(() => {
       (i.style || []).some(s => s.toLowerCase().includes(q))
     )
   }
-
   return result
 })
-
-async function handleMoveToWardrobe(item) {
-  if (props.moveToWardrobe) {
-    await props.moveToWardrobe(item)
-    emit('refreshWardrobe')
-  }
-}
-
-async function handleRemove(item) {
-  if (props.removeItem) {
-    await props.removeItem(item.id)
-  }
-}
 </script>
 
 <template>
   <div>
-    <!-- 分类栏 -->
     <div class="filter-bar">
       <div class="filter-left">
         <button :class="['filter-btn', filter === 'all' && 'active']" @click="setFilter('all')">全部</button>
         <button :class="['filter-btn', filter === '上衣' && 'active']" @click="setFilter('上衣')">上衣</button>
         <button :class="['filter-btn', filter === '下装' && 'active']" @click="setFilter('下装')">下装</button>
         <button :class="['filter-btn', filter === '配饰' && 'active']" @click="setFilter('配饰')">配饰</button>
-
-        <!-- 自定义标签 -->
-        <button
-          v-for="tag in customTags"
-          :key="tag"
-          :class="['filter-btn', 'custom-tag', filter === 'tag:'+tag && 'active']"
-          @click="setFilter('tag:'+tag)"
-        >
+        <button v-for="tag in customTags" :key="tag" :class="['filter-btn', 'custom-tag', filter === 'tag:'+tag && 'active']" @click="setFilter('tag:'+tag)">
           {{ tag }}
           <span class="tag-remove" @click.stop="removeCustomTag(tag)">×</span>
         </button>
-
-        <!-- 添加标签按钮 -->
         <button v-if="!showAddTag" class="filter-btn add-tag-btn" @click="showAddTag = true">+</button>
         <div v-else class="add-tag-input">
-          <input
-            v-model="newTagText"
-            placeholder="标签名"
-            maxlength="10"
-            @keyup.enter="addCustomTag"
-            @blur="addCustomTag"
-            autofocus
-          />
+          <input v-model="newTagText" placeholder="标签名" maxlength="10" @keyup.enter="addCustomTag" @blur="addCustomTag" autofocus />
         </div>
       </div>
-
       <div class="filter-right">
         <div v-if="showSearch" class="search-box">
-          <input
-            v-model="searchText"
-            placeholder="搜索名称、品牌、风格..."
-            @keyup.escape="toggleSearch"
-            autofocus
-          />
+          <input v-model="searchText" placeholder="搜索名称、品牌、风格..." @keyup.escape="toggleSearch" autofocus />
         </div>
         <button :class="['filter-btn', 'search-btn', showSearch && 'active']" @click="toggleSearch">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </button>
       </div>
     </div>
 
-    <!-- 卡片网格 -->
     <div class="grid">
       <WishlistCard
         v-for="item in filteredItems"
         :key="item.id"
         :item="item"
-        :imgUrl="getImgUrl(item)"
-        :color="getColor(item)"
-        @moveToWardrobe="handleMoveToWardrobe"
-        @remove="handleRemove"
+        :imgUrl="store.getImgUrl(item)"
+        :color="store.getColor(item)"
+        @moveToWardrobe="store.moveToWardrobe($event)"
+        @remove="store.remove($event.id)"
       />
       <div v-if="!filteredItems.length" class="empty">
         <div class="empty-icon">
@@ -191,115 +131,18 @@ async function handleRemove(item) {
 </template>
 
 <style scoped>
-.filter-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-lg);
-  flex-wrap: wrap;
-}
-
-.filter-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xxs);
-  flex-wrap: wrap;
-  flex: 1;
-}
-
-.filter-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xxs);
-}
-
-.filter-btn {
-  padding: var(--space-xs) var(--space-md);
-  border: 1px solid var(--hairline);
-  background: var(--canvas);
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--body);
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.filter-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.filter-btn.active {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
-}
-
-.custom-tag {
-  position: relative;
-  padding-right: 28px;
-}
-
-.tag-remove {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 14px;
-  line-height: 1;
-  opacity: 0.5;
-  cursor: pointer;
-}
-
-.tag-remove:hover {
-  opacity: 1;
-}
-
-.add-tag-btn {
-  min-width: 32px;
-  padding: var(--space-xs) 10px;
-  font-size: 16px;
-  font-weight: 400;
-  color: var(--muted);
-  border-style: dashed;
-}
-
-.add-tag-input input {
-  width: 80px;
-  padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-pill);
-  font-size: 13px;
-  outline: none;
-  background: var(--canvas);
-  color: var(--ink);
-}
-
-.search-btn {
-  min-width: 36px;
-  padding: var(--space-xs) 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.search-box input {
-  width: 180px;
-  padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-pill);
-  font-size: 13px;
-  outline: none;
-  background: var(--canvas);
-  color: var(--ink);
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; width: 0; }
-  to { opacity: 1; width: 180px; }
-}
+.filter-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); margin-bottom: var(--space-lg); flex-wrap: wrap; }
+.filter-left { display: flex; align-items: center; gap: var(--space-xxs); flex-wrap: wrap; flex: 1; }
+.filter-right { display: flex; align-items: center; gap: var(--space-xxs); }
+.filter-btn { padding: var(--space-xs) var(--space-md); border: 1px solid var(--hairline); background: var(--canvas); border-radius: var(--radius-pill); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--body); transition: all 0.15s ease; white-space: nowrap; }
+.filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+.filter-btn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.custom-tag { position: relative; padding-right: 28px; }
+.tag-remove { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 14px; line-height: 1; opacity: 0.5; cursor: pointer; }
+.tag-remove:hover { opacity: 1; }
+.add-tag-btn { min-width: 32px; padding: var(--space-xs) 10px; font-size: 16px; font-weight: 400; color: var(--muted); border-style: dashed; }
+.add-tag-input input { width: 80px; padding: var(--space-xs) var(--space-sm); border: 1px solid var(--primary); border-radius: var(--radius-pill); font-size: 13px; outline: none; background: var(--canvas); color: var(--ink); }
+.search-btn { min-width: 36px; padding: var(--space-xs) 10px; display: flex; align-items: center; justify-content: center; }
+.search-box input { width: 180px; padding: var(--space-xs) var(--space-sm); border: 1px solid var(--primary); border-radius: var(--radius-pill); font-size: 13px; outline: none; background: var(--canvas); color: var(--ink); animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; width: 0; } to { opacity: 1; width: 180px; } }
 </style>

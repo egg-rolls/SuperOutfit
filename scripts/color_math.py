@@ -448,6 +448,7 @@ def main():
     parser.add_argument("--items", help="衣物 ID，逗号分隔")
     parser.add_argument("--analyze-base", action="store_true", help="分析底色")
     parser.add_argument("--detail", action="store_true", help="显示详细分析")
+    parser.add_argument("--json", action="store_true", help="输出 JSON")
 
     args = parser.parse_args()
 
@@ -478,6 +479,8 @@ def main():
     linear_score = model_predict_score_linear(hex_list)
     gp_score = model_predict_score_gp(hex_list)
 
+    grade = "SSS" if score >= 85 else "SS" if score >= 75 else "S" if score >= 65 else "A" if score >= 50 else "B" if score >= 35 else "C" if score >= 20 else "D"
+
     result = {
         "colors": hex_list,
         "hsl_values": [hex_to_hsl(h) for h in hex_list],
@@ -487,7 +490,7 @@ def main():
         "gp_model_score": gp_score,
         "model_available": linear_score is not None,
         "gp_available": gp_score is not None,
-        "grade": "SSS" if score >= 85 else "SS" if score >= 75 else "S" if score >= 65 else "A" if score >= 50 else "B" if score >= 35 else "C" if score >= 20 else "D",
+        "grade": grade,
     }
 
     # 底色分析
@@ -511,7 +514,60 @@ def main():
                 })
         result["pair_analysis"] = pairs
 
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        try:
+            from output import console, color_dot, grade_badge
+            from rich.panel import Panel
+            from rich.table import Table
+            from rich.text import Text
+            from rich import box
+
+            # 色条
+            color_row = Text()
+            for h in hex_list:
+                color_row.append("  ")
+                color_row.append_text(color_dot(h))
+            color_row.append(f"  ({len(hex_list)} 色)")
+
+            # 评分面板
+            t = Table(box=None, show_header=False, padding=(0, 2))
+            t.add_column(style="dim", min_width=10)
+            t.add_column()
+            t.add_row("配色", color_row)
+            t.add_row("分数", Text(f"{score:.1f}", style="bold"))
+            t.add_row("等级", grade_badge(grade))
+            if gp_score is not None:
+                t.add_row("GP 模型", f"{gp_score:.1f}")
+            if linear_score is not None:
+                t.add_row("线性模型", f"{linear_score:.1f}")
+            if theory is not None:
+                t.add_row("理论分数", f"{theory:.1f}")
+
+            console.print()
+            console.print(Panel(t, title="色彩评分", border_style="#cc785c", box=box.ROUNDED, expand=False))
+
+            # 详细配对分析
+            if args.detail and result.get("pair_analysis"):
+                pt = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8",
+                           title="配对分析", title_style="bold #cc785c")
+                pt.add_column("", width=3)
+                pt.add_column("", width=3)
+                pt.add_column("关系")
+                pt.add_column("分数", justify="right")
+                for p in result["pair_analysis"]:
+                    pt.add_row(
+                        color_dot(p["color1"]),
+                        color_dot(p["color2"]),
+                        p["relation"],
+                        f"{p['pair_score']:.1f}",
+                    )
+                console.print(pt)
+
+            console.print()
+        except ImportError:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     main()

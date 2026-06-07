@@ -2,7 +2,7 @@
 SuperOutfit API Server
 直接 import scripts/ 中的函数，不 fork 子进程
 """
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -295,97 +295,6 @@ async def reference_delete(filename: str):
 images_dir = DATA_DIR / "images"
 if images_dir.exists():
     app.mount("/images", StaticFiles(directory=str(images_dir)), name="images")
-
-# AI 推荐 WebSocket
-@app.websocket("/ws/recommend")
-async def ws_recommend(websocket: WebSocket):
-    await websocket.accept()
-    conn = None
-    try:
-        while True:
-            data = await websocket.receive_json()
-            event = data.get("event", "")
-            body = data.get("body", "")
-
-            if event == "chat":
-                profile = {}
-                p = DATA_DIR / "profile.yaml"
-                if p.exists():
-                    with open(p, "r", encoding="utf-8") as f:
-                        profile = yaml.safe_load(f) or {}
-
-                try:
-                    wx = _get_weather()
-                    weather_info = wx.query_weather(profile.get("city", "大连"))
-                    temp = weather_info.get("temperature", "N/A")
-                    desc = weather_info.get("condition", "未知")
-                except Exception:
-                    temp, desc = "N/A", "未知"
-
-                try:
-                    wo = _get_wardrobe_ops()
-                    items_data = wo.api_list()
-                    wardrobe_summary = "\n".join([
-                        f"- {i.get('sub_type', i.get('type', ''))} ({i.get('type','')}, {i.get('colors', {}).get('primary', '')})"
-                        for i in items_data.get("items", [])[:20]
-                    ])
-                except Exception:
-                    wardrobe_summary = "衣橱为空"
-
-                prompt = f"""你是穿搭推荐助手。用户问：{body}
-
-当前天气：{profile.get('city', '大连')} {temp}°C {desc}
-用户：{profile.get('height','N/A')}cm {profile.get('weight','N/A')}kg
-风格偏好：{', '.join(profile.get('style_preferences', []))}
-衣橱：
-{wardrobe_summary}
-
-请推荐 1-2 套穿搭方案。格式：方案名 + 搭配 + 推荐理由（简洁）"""
-
-                import http.client
-                try:
-                    conn = http.client.HTTPConnection("127.0.0.1", 11434, timeout=60)
-                    payload = json.dumps({
-                        "model": "qwen3:32b",
-                        "messages": [{"role": "user", "content": prompt}],
-                        "stream": True
-                    })
-                    conn.request("POST", "/api/chat", payload, {"Content-Type": "application/json"})
-                    resp = conn.getresponse()
-
-                    for line in resp:
-                        line = line.strip()
-                        if line:
-                            try:
-                                chunk = json.loads(line)
-                                content = chunk.get("message", {}).get("content", "")
-                                if content:
-                                    await websocket.send_json({"event": "chat", "body": content})
-                            except json.JSONDecodeError:
-                                continue
-
-                    await websocket.send_json({"event": "end", "body": ""})
-                except Exception as e:
-                    await websocket.send_json({"event": "chat", "body": f"AI 服务不可用: {str(e)}"})
-                    await websocket.send_json({"event": "end", "body": ""})
-                finally:
-                    # 确保关闭 Ollama 连接
-                    if conn:
-                        try:
-                            conn.close()
-                        except Exception:
-                            pass
-                        conn = None
-
-    except WebSocketDisconnect:
-        pass
-    finally:
-        # 客户端断开时清理残留连接
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
 # 静态文件 - 前端
 FRONTEND_DIR = APP_DIR / "frontend"

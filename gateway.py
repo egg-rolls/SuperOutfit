@@ -439,48 +439,81 @@ class Gateway:
                 frontend_ok = api_ok
             
             if api_ok and frontend_ok:
-                print("  [OK] 服务已就绪")
+                try:
+                    from scripts.output import success
+                    success("服务已就绪")
+                except ImportError:
+                    print("  [OK] 服务已就绪")
                 return True
-            
+
             time.sleep(1)
-        
+
         # 超时后报告具体哪个没就绪
-        if not api_ok:
-            print("  [WARN] API 服务启动超时")
-        if not frontend_ok:
-            print("  [WARN] 前端服务启动超时")
+        try:
+            from scripts.output import warn
+            if not api_ok:
+                warn("API 服务启动超时")
+            if not frontend_ok:
+                warn("前端服务启动超时")
+        except ImportError:
+            if not api_ok:
+                print("  [WARN] API 服务启动超时")
+            if not frontend_ok:
+                print("  [WARN] 前端服务启动超时")
         return False
     
     def print_status(self):
         """打印服务状态"""
-        print("\n" + "="*60)
-        print("  SuperOutfit Gateway 运行中")
-        print("="*60)
-        print()
-        
-        status = self.manager.get_status()
-        
-        for name, info in status.items():
-            state = "[OK] 运行中" if info["running"] else "[X] 已停止"
-            port = self.ports.get(name)
-            url = f"http://localhost:{port}" if port else "stdio://"
-            
-            print(f"  {name.upper():<12} {state:<12} {url}")
-        
-        print()
-        print("  按 Ctrl+C 停止所有服务")
-        print("="*60)
-        print()
+        try:
+            from scripts.output import console
+            from rich.table import Table
+            from rich.text import Text
+            from rich import box
+
+            status = self.manager.get_status()
+
+            t = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8",
+                      title="SuperOutfit Gateway", title_style="bold #cc785c")
+            t.add_column("服务", style="bold")
+            t.add_column("状态")
+            t.add_column("地址")
+
+            for name, info in status.items():
+                if info["running"]:
+                    state = Text("运行中", style="#5db872")
+                else:
+                    state = Text("已停止", style="#c64545")
+                port = self.ports.get(name)
+                url = f"http://localhost:{port}" if port else "stdio://"
+                t.add_row(name.upper(), state, url)
+
+            console.print()
+            console.print(t)
+            console.print()
+            console.print("  [dim]按 Ctrl+C 停止所有服务[/]")
+            console.print()
+        except ImportError:
+            print("\n  SuperOutfit Gateway 运行中")
+            status = self.manager.get_status()
+            for name, info in status.items():
+                state = "运行中" if info["running"] else "已停止"
+                port = self.ports.get(name)
+                url = f"http://localhost:{port}" if port else "stdio://"
+                print(f"  {name.upper():<12} {state:<12} {url}")
+            print("\n  按 Ctrl+C 停止所有服务\n")
     
     def run(self):
         """运行网关"""
-        print("\n" + "="*60)
-        print("  SuperOutfit Gateway 启动中...")
-        print("="*60)
-        print()
-        
+        try:
+            from scripts.output import console
+            from rich.panel import Panel
+            from rich import box
+            console.print()
+            console.print(Panel("SuperOutfit Gateway 启动中...", border_style="#cc785c", box=box.ROUNDED, expand=False))
+        except ImportError:
+            print("\n  SuperOutfit Gateway 启动中...\n")
+
         # 启动服务
-        print("启动服务：")
         self.start_api()
         self.start_frontend()
         self.start_mcp()

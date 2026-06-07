@@ -168,17 +168,55 @@ def cmd_check(args):
         print(json.dumps({"needs_wash": needs_wash, "total": len(needs_wash)}, ensure_ascii=False, indent=2))
     else:
         if not needs_wash:
-            print("没有需要清洗的衣物。")
+            try:
+                from output import empty_state
+                empty_state("🧺", "没有需要清洗的衣物")
+            except ImportError:
+                print("没有需要清洗的衣物。")
             return
-        print(f"\n{'='*50}")
-        print(f"  需要清洗 ({len(needs_wash)} 件)")
-        print(f"{'='*50}")
-        for i in needs_wash:
-            over = i["wear_since_wash"] - i["wash_frequency"]
-            tag = "!!!" if over >= 2 else ("!" if over >= 1 else "")
-            print(f"  {tag} {i['id']:<12} {i['type']}/{i['sub_type']:<10} "
-                  f"已穿{i['wear_since_wash']}次 (建议{i['wash_frequency']}次洗)")
-        print()
+        try:
+            from output import console
+            from rich.table import Table
+            from rich.text import Text
+            from rich import box
+
+            t = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8",
+                      title=f"需要清洗 · {len(needs_wash)} 件", title_style="bold #cc785c")
+            t.add_column("", width=3)
+            t.add_column("ID", style="dim")
+            t.add_column("类型")
+            t.add_column("名称", style="bold")
+            t.add_column("已穿", justify="right")
+            t.add_column("建议", justify="right", style="dim")
+            t.add_column("超出", justify="right")
+
+            for i in needs_wash:
+                over = i["wear_since_wash"] - i["wash_frequency"]
+                if over >= 2:
+                    urgency = Text("!!!", style="bold #c64545")
+                elif over >= 1:
+                    urgency = Text("!", style="bold #d4a017")
+                else:
+                    urgency = Text("·", style="dim")
+                t.add_row(
+                    urgency,
+                    i["id"],
+                    i["type"],
+                    i["sub_type"],
+                    str(i["wear_since_wash"]),
+                    str(i["wash_frequency"]),
+                    f"+{over}" if over > 0 else "0",
+                )
+            console.print()
+            console.print(t)
+            console.print()
+        except ImportError:
+            print(f"\n  需要清洗 ({len(needs_wash)} 件)")
+            for i in needs_wash:
+                over = i["wear_since_wash"] - i["wash_frequency"]
+                tag = "!!!" if over >= 2 else ("!" if over >= 1 else "")
+                print(f"  {tag} {i['id']:<12} {i['type']}/{i['sub_type']:<10} "
+                      f"已穿{i['wear_since_wash']}次 (建议{i['wash_frequency']}次洗)")
 
 
 def cmd_report(args):
@@ -212,14 +250,41 @@ def cmd_report(args):
         if args.json:
             print(json.dumps(reports, ensure_ascii=False, indent=2))
         else:
-            for r in reports:
-                print(f"\n  {r['id']} {r['type']}/{r['sub_type']}")
-                print(f"    穿着: {r['wear_count']}次  最后: {r['last_worn'] or '从未'}")
-                if r["price"]:
-                    print(f"    价格: ¥{r['price']}  单次: ¥{r['cost_per_wear'] or '-'}")
-                if r["wear_dates"]:
-                    print(f"    近期: {', '.join(r['wear_dates'])}")
-            print()
+            try:
+                from output import console, info_table
+                from rich.panel import Panel
+                from rich.table import Table as RichTable
+                from rich import box
+
+                for r in reports:
+                    rows = [
+                        ("ID", r["id"]),
+                        ("类型", f"{r['type']} / {r['sub_type']}"),
+                        ("穿着", f"{r['wear_count']} 次"),
+                        ("最后", r["last_worn"] or "从未"),
+                    ]
+                    if r["price"]:
+                        rows.append(("价格", f"¥{r['price']}"))
+                        rows.append(("单次成本", f"¥{r['cost_per_wear']}" if r["cost_per_wear"] else "-"))
+                    if r["wear_dates"]:
+                        rows.append(("近期", ", ".join(r["wear_dates"])))
+
+                    t = RichTable(box=None, show_header=False, padding=(0, 2))
+                    t.add_column(style="dim", min_width=10)
+                    t.add_column()
+                    for label, value in rows:
+                        t.add_row(label, str(value))
+                    title = f"{r['type']} / {r['sub_type']}"
+                    console.print(Panel(t, title=title, border_style="#cc785c", box=box.ROUNDED, expand=False))
+                console.print()
+            except ImportError:
+                for r in reports:
+                    print(f"\n  {r['id']} {r['type']}/{r['sub_type']}")
+                    print(f"    穿着: {r['wear_count']}次  最后: {r['last_worn'] or '从未'}")
+                    if r["price"]:
+                        print(f"    价格: ¥{r['price']}  单次: ¥{r['cost_per_wear'] or '-'}")
+                    if r["wear_dates"]:
+                        print(f"    近期: {', '.join(r['wear_dates'])}")
     else:
         # 全局报表
         items = load_items()
@@ -251,29 +316,81 @@ def cmd_report(args):
                 "never_worn": [i.get("id","") for i in never_worn],
             }, ensure_ascii=False, indent=2))
         else:
-            print(f"\n{'='*50}")
-            print(f"  穿着报表")
-            print(f"{'='*50}")
-            print(f"  总件数: {len(items)}  总穿着: {total_wear}次  均穿: {round(total_wear/len(items),1)}次/件")
+            try:
+                from output import console, bar_chart, info_table
+                from rich.table import Table
+                from rich.text import Text
+                from rich.panel import Panel
+                from rich import box
 
-            if most_worn and most_worn[0].get("wear_count", 0) > 0:
-                print(f"\n  最常穿:")
-                for i, m in enumerate(most_worn[:5]):
-                    wc = m.get("wear_count", 0)
-                    if wc == 0: break
-                    bar = "█" * min(wc, 20)
-                    print(f"    {i+1}. {m.get('id','')} {m.get('type','')}/{m.get('sub_type','')} {bar} {wc}次")
+                # 概览面板
+                avg = round(total_wear / len(items), 1)
+                overview = Table(box=None, show_header=False, padding=(0, 2))
+                overview.add_column(style="dim", min_width=10)
+                overview.add_column()
+                overview.add_row("总件数", str(len(items)))
+                overview.add_row("总穿着", f"{total_wear} 次")
+                overview.add_row("均穿", f"{avg} 次/件")
+                if total_price:
+                    overview.add_row("总价值", f"¥{total_price}")
+                console.print()
+                console.print(Panel(overview, title="穿着报表", border_style="#cc785c", box=box.ROUNDED, expand=False))
 
-            if valued:
-                print(f"\n  性价比:")
-                for i, v in enumerate(valued[:5]):
-                    print(f"    {i+1}. {v['id']} {v['type']}/{v['sub_type']} ¥{v['cpw']}/次")
+                # 最常穿（带条形图）
+                if most_worn and most_worn[0].get("wear_count", 0) > 0:
+                    t = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8",
+                              title="最常穿", title_style="bold #cc785c")
+                    t.add_column("#", style="dim", width=3)
+                    t.add_column("ID", style="dim")
+                    t.add_column("名称")
+                    t.add_column("条形图")
+                    t.add_column("次数", justify="right")
+                    for i, m in enumerate(most_worn[:5]):
+                        wc = m.get("wear_count", 0)
+                        if wc == 0: break
+                        t.add_row(
+                            str(i + 1),
+                            m.get("id", ""),
+                            f"{m.get('type', '')}/{m.get('sub_type', '')}",
+                            bar_chart(wc),
+                            str(wc),
+                        )
+                    console.print(t)
 
-            if never_worn:
-                print(f"\n  从未穿着 ({len(never_worn)}件):")
-                for n in never_worn:
-                    print(f"    • {n.get('id','')} {n.get('type','')}/{n.get('sub_type','')}")
-            print()
+                # 性价比
+                if valued:
+                    t = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8",
+                              title="性价比 TOP 5", title_style="bold #cc785c")
+                    t.add_column("#", style="dim", width=3)
+                    t.add_column("ID", style="dim")
+                    t.add_column("名称")
+                    t.add_column("价格", justify="right")
+                    t.add_column("单次成本", justify="right", style="bold #5db872")
+                    for i, v in enumerate(valued[:5]):
+                        t.add_row(
+                            str(i + 1),
+                            v["id"],
+                            f"{v['type']}/{v['sub_type']}",
+                            f"¥{v['price']}",
+                            f"¥{v['cpw']}/次",
+                        )
+                    console.print(t)
+
+                # 从未穿着
+                if never_worn:
+                    names = [f"{n.get('id', '')} {n.get('type', '')}/{n.get('sub_type', '')}" for n in never_worn]
+                    console.print(f"\n  [dim]从未穿着 ({len(never_worn)} 件):[/] [muted]{', '.join(names)}[/]")
+                console.print()
+            except ImportError:
+                print(f"\n  穿着报表")
+                print(f"  总件数: {len(items)}  总穿着: {total_wear}次  均穿: {round(total_wear/len(items),1)}次/件")
+                if most_worn and most_worn[0].get("wear_count", 0) > 0:
+                    print(f"\n  最常穿:")
+                    for i, m in enumerate(most_worn[:5]):
+                        wc = m.get("wear_count", 0)
+                        if wc == 0: break
+                        bar = "█" * min(wc, 20)
+                        print(f"    {i+1}. {m.get('id','')} {m.get('type','')}/{m.get('sub_type','')} {bar} {wc}次")
 
 
 def main():

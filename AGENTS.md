@@ -467,5 +467,5 @@ GitHub 连接超时，需要配置代理（端口 7892）才能 push。
 ### 10. v3.2.1: Gateway 子进程输出必须重定向到文件
 `gateway.py` 启动子进程时**不能使用 `stdout=subprocess.PIPE`**。Windows 管道缓冲区仅 ~4KB，父进程不读取时，uvicorn 的日志输出会写满缓冲区并阻塞整个事件循环，导致服务器瘫痪。已改为写入 `.logs/{name}.log` 文件。如需查看子进程输出，读取日志文件而非 PIPE。
 
-### 11. v3.2.1: WebSocket handler 必须清理外部连接
-`api/main.py` 的 `/ws/recommend` 端点在客户端断开时，必须关闭到 Ollama 的 `http.client.HTTPConnection`。否则连接和线程泄漏，多次刷新后耗尽资源。使用 `try/finally` 确保连接关闭。
+### 11. 设计决策：本应用不内置 AI 调用
+SuperOutfit 是一个 **AI 工具软件**（被 AI 调用），而非 AI 聊天应用。本应用不内置调用 Ollama 或任何 LLM 的功能。所有 AI 推荐通过 MCP Server 由外部 AI Agent（Claude、Cursor 等）调用 `recommend_outfit` 工具完成。这是有意的设计决策——职责分离，避免应用耦合特定 LLM 实现。

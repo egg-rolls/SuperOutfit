@@ -25,17 +25,22 @@ import os
 import json
 from pathlib import Path
 
-# rich
+# rich (Claude-style output)
 try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.text import Text
-    console = Console()
+    from scripts.output import console, header, info_table, success, error, warn, info, kv_pairs
 except ImportError:
-    class SimpleConsole:
-        def print(self, *args, **kwargs):
-            print(*args)
-    console = SimpleConsole()
+    try:
+        from output import console, header, info_table, success, error, warn, info, kv_pairs
+    except ImportError:
+        from rich.console import Console
+        console = Console()
+        def header(t, s=None): print(f"\n  {t}\n  {s or ''}")
+        def info_table(r, title=None): [print(f"  {k}: {v}") for k, v in r]
+        def success(m): print(f"  ✓ {m}")
+        def error(m): print(f"  ✗ {m}")
+        def warn(m): print(f"  ! {m}")
+        def info(m): print(f"  · {m}")
+        def kv_pairs(p): [print(f"  {k}: {v}") for k, v in p]
 
 SCRIPT_DIR = Path(__file__).parent / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -133,9 +138,12 @@ def cmd_info(args):
     wishlist_dir = P("data/wishlist")
     item_count = len(list(items_dir.glob("*.yaml"))) if items_dir.exists() else 0
     wish_count = len(list(wishlist_dir.glob("*.yaml"))) if wishlist_dir.exists() else 0
-    print(f"SuperOutfit v3.2.0")
-    print(f"  衣柜: {item_count} 件")
-    print(f"  购物清单: {wish_count} 件")
+    info_table([
+        ("版本", "v3.2.1"),
+        ("衣柜", f"{item_count} 件"),
+        ("购物清单", f"{wish_count} 件"),
+        ("数据目录", str(P("data").resolve())),
+    ], title="SuperOutfit")
 
 
 def cmd_gateway(args):
@@ -145,7 +153,7 @@ def cmd_gateway(args):
         from gateway import Gateway, load_pid, is_process_running
         data = load_pid()
         if data and is_process_running(data["pid"]):
-            print(f"Gateway 已在运行 (PID: {data['pid']})")
+            warn(f"Gateway 已在运行 (PID: {data['pid']})")
             return
         class A:
             port = args.port
@@ -156,21 +164,28 @@ def cmd_gateway(args):
 
     elif gw_action == "down":
         from gateway import stop_gateway
-        success, message = stop_gateway()
-        print(message)
+        ok, message = stop_gateway()
+        if ok:
+            success(message)
+        else:
+            error(message)
 
     elif gw_action == "status":
         from gateway import get_gateway_status
         status = get_gateway_status()
         if not status["running"]:
-            print(f"Gateway: {status['message']}")
+            info(status['message'])
             return
-        print(f"Gateway: 运行中 (PID: {status['pid']})")
         ports = status.get("ports", {})
-        if ports.get("frontend"):
-            print(f"  Frontend: http://localhost:{ports['frontend']}")
+        rows = [
+            ("状态", "[success]运行中[/]"),
+            ("PID", str(status['pid'])),
+        ]
         if ports.get("api"):
-            print(f"  API: http://localhost:{ports['api']}")
+            rows.append(("API", f"http://localhost:{ports['api']}"))
+        if ports.get("frontend"):
+            rows.append(("Frontend", f"http://localhost:{ports['frontend']}"))
+        info_table(rows, title="Gateway")
 
 
 # ==================== Infrastructure ====================
@@ -347,12 +362,15 @@ def cmd_update(args):
 
 def show_banner():
     try:
-        title = Text("SPOF", style="bold magenta")
+        from rich.text import Text
+        from rich.panel import Panel
+        from rich import box
+        title = Text("SPOF", style="bold #cc785c")
         subtitle = Text("AI 智能穿搭顾问", style="dim")
-        version = Text("v3.2.1", style="green")
-        content = Text.assemble("\n", "  ", title, "\n", "  ", subtitle, "\n", "  ", version, "\n")
-        console.print(Panel(content, border_style="blue", expand=False))
-    except:
+        version = Text("v3.2.1", style="#5db872")
+        content = Text.assemble("\n  ", title, "\n  ", subtitle, "\n  ", version, "\n")
+        console.print(Panel(content, border_style="#cc785c", box=box.ROUNDED, expand=False))
+    except Exception:
         print("SuperOutfit v3.2.1")
 
 

@@ -256,12 +256,89 @@ def main():
     parser.add_argument("--items", required=True, help="衣物 ID，逗号分隔")
     parser.add_argument("--occasion", help="场合")
     parser.add_argument("--temp", type=float, help="当前温度")
-    
+    parser.add_argument("--json", action="store_true", help="输出 JSON")
+
     args = parser.parse_args()
     item_ids = [s.strip() for s in args.items.split(",")]
-    
+
     result = score_outfit(item_ids, args.occasion, args.temp)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        if "error" in result:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return
+
+        try:
+            from output import console, grade_badge, bar_chart
+            from rich.panel import Panel
+            from rich.table import Table
+            from rich.text import Text
+            from rich import box
+
+            scores = result.get("scores", {})
+            weights = result.get("weights", {})
+            total = result.get("total_score", 0)
+            grade = result.get("grade", "?")
+            comment = result.get("comment", "")
+            items = result.get("valid_items", [])
+            missing = result.get("missing_items", [])
+
+            # 维度标签
+            dim_labels = {
+                "color": "色彩协调",
+                "style": "风格一致",
+                "occasion": "场合匹配",
+                "weather": "天气适配",
+                "freshness": "新鲜度",
+                "preference": "用户偏好",
+            }
+
+            # 概览面板
+            overview = Table(box=None, show_header=False, padding=(0, 2))
+            overview.add_column(style="dim", min_width=10)
+            overview.add_column()
+            overview.add_row("搭配", Text(", ".join(items), style="dim"))
+            if result.get("occasion"):
+                overview.add_row("场合", result["occasion"])
+            if result.get("temperature"):
+                overview.add_row("温度", f"{result['temperature']}°C")
+            overview.add_row("总分", Text(f"{total:.1f}", style="bold"))
+            overview.add_row("等级", grade_badge(grade))
+            overview.add_row("评语", comment)
+
+            console.print()
+            console.print(Panel(overview, title="穿搭评分", border_style="#cc785c", box=box.ROUNDED, expand=False))
+
+            # 维度明细表
+            t = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8",
+                      title="评分明细", title_style="bold #cc785c")
+            t.add_column("维度")
+            t.add_column("权重", justify="right", style="dim")
+            t.add_column("分数", justify="right")
+            t.add_column("得分", justify="right")
+            t.add_column("条形图")
+
+            for key in ["color", "style", "occasion", "weather", "freshness", "preference"]:
+                s = scores.get(key, 0)
+                w = weights.get(key, 0)
+                weighted = round(s * w, 1)
+                t.add_row(
+                    dim_labels.get(key, key),
+                    f"{int(w*100)}%",
+                    f"{s:.1f}",
+                    f"{weighted:.1f}",
+                    bar_chart(int(s / 5), max_value=20),
+                )
+
+            console.print(t)
+
+            if missing:
+                console.print(f"\n  [warning]未找到:[/dim] [muted]{', '.join(missing)}[/]")
+            console.print()
+        except ImportError:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     main()

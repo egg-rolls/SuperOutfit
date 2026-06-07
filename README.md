@@ -397,7 +397,7 @@ print(result["total_score"], result["grade"])
 ### 技术栈
 
 - **后端**: Python 3.11 + FastAPI + uvicorn
-- **前端**: Vue 3 + Vite + Naive UI + @vicons/ionicons5
+- **前端**: Vue 3 + Vite + Pinia（状态管理）+ marked（Markdown）
 - **数据**: YAML 文件存储，用户可直接编辑
 - **AI**: 高斯过程模型（scikit-learn）+ 42 维特征（HSL + OKLab）
 - **依赖管理**: uv（Python）+ npm（Node.js）

@@ -1,19 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useWardrobeStore } from '../stores/wardrobe'
 import WardrobeCard from '../components/WardrobeCard.vue'
 import ItemModal from '../components/ItemModal.vue'
 
-const props = defineProps({
-  items: Array,
-  getImgUrl: Function,
-  getColor: Function,
-  getTypes: Function,
-  getStyles: Function,
-  filterItems: Function,
-  updateItem: Function,
-  recordWear: Function,
-  markWash: Function
-})
+const store = useWardrobeStore()
 
 const filter = ref('all')
 const searchText = ref('')
@@ -22,7 +13,7 @@ const showAddTag = ref(false)
 const newTagText = ref('')
 const modalItem = ref(null)
 
-// 自定义标签（持久化到 localStorage）
+// Custom tags (persisted to localStorage)
 const STORAGE_KEY = 'superoutfit_custom_tags'
 const customTags = ref(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'))
 
@@ -55,7 +46,7 @@ function toggleSearch() {
   if (!showSearch.value) searchText.value = ''
 }
 
-// 分类映射
+// Category mapping
 const CATEGORY_MAP = {
   '上衣': ['上衣'],
   '下装': ['下装', '裤', '裙', '裤子'],
@@ -67,11 +58,10 @@ function getCategory(item) {
   return '配饰'
 }
 
-// 过滤逻辑
+// Filter logic
 const filteredItems = computed(() => {
-  let result = props.items
+  let result = store.items
 
-  // 分类过滤
   if (filter.value === '上衣' || filter.value === '下装' || filter.value === '配饰') {
     result = result.filter(i => getCategory(i) === filter.value)
   } else if (filter.value.startsWith('tag:')) {
@@ -85,7 +75,6 @@ const filteredItems = computed(() => {
     )
   }
 
-  // 搜索文本
   if (searchText.value) {
     const q = searchText.value.toLowerCase()
     result = result.filter(i =>
@@ -109,32 +98,14 @@ function closeModal() {
 }
 
 function handleSave(itemData) {
-  if (props.updateItem) {
-    props.updateItem(itemData)
-  }
-  const idx = props.items.findIndex(i => i.id === itemData.id)
-  if (idx >= 0) {
-    Object.assign(props.items[idx], itemData)
-  }
+  store.update(itemData.id, itemData)
   closeModal()
-}
-
-function handleRecordWear(item) {
-  if (props.recordWear) {
-    props.recordWear(item.id)
-  }
-}
-
-function handleMarkWash(item) {
-  if (props.markWash) {
-    props.markWash(item.id)
-  }
 }
 </script>
 
 <template>
   <div>
-    <!-- 分类栏 -->
+    <!-- Filter bar -->
     <div class="filter-bar">
       <div class="filter-left">
         <button :class="['filter-btn', filter === 'all' && 'active']" @click="setFilter('all')">全部</button>
@@ -142,7 +113,6 @@ function handleMarkWash(item) {
         <button :class="['filter-btn', filter === '下装' && 'active']" @click="setFilter('下装')">下装</button>
         <button :class="['filter-btn', filter === '配饰' && 'active']" @click="setFilter('配饰')">配饰</button>
 
-        <!-- 自定义标签 -->
         <button
           v-for="tag in customTags"
           :key="tag"
@@ -153,7 +123,6 @@ function handleMarkWash(item) {
           <span class="tag-remove" @click.stop="removeCustomTag(tag)">×</span>
         </button>
 
-        <!-- 添加标签按钮 -->
         <button v-if="!showAddTag" class="filter-btn add-tag-btn" @click="showAddTag = true">+</button>
         <div v-else class="add-tag-input">
           <input
@@ -184,17 +153,17 @@ function handleMarkWash(item) {
       </div>
     </div>
 
-    <!-- 卡片网格 -->
+    <!-- Card grid -->
     <div class="grid">
       <WardrobeCard
         v-for="item in filteredItems"
         :key="item.id"
         :item="item"
-        :imgUrl="getImgUrl(item)"
-        :color="getColor(item)"
+        :imgUrl="store.getImgUrl(item)"
+        :color="store.getColor(item)"
         @click="openModal"
-        @recordWear="handleRecordWear"
-        @markWash="handleMarkWash"
+        @recordWear="store.recordWear($event.id)"
+        @markWash="store.markWash($event.id)"
       />
       <div v-if="!filteredItems.length" class="empty">
         <div class="empty-icon">
@@ -209,7 +178,7 @@ function handleMarkWash(item) {
     <ItemModal
       v-if="modalItem"
       :item="modalItem"
-      :imgUrl="getImgUrl(modalItem)"
+      :imgUrl="store.getImgUrl(modalItem)"
       @close="closeModal"
       @save="handleSave"
     />

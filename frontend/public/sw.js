@@ -32,7 +32,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
 
   // API 请求使用网络优先策略
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) {
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() => {
         return caches.match(request)

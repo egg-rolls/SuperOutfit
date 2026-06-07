@@ -146,25 +146,56 @@ def cmd_list(args):
         print(json.dumps({"target": label, "items": result, "total": len(result)}, ensure_ascii=False, indent=2))
         return
 
+    label = "购物清单" if args.wishlist else "衣柜"
+
     if not items:
-        label = "购物清单" if args.wishlist else "衣柜"
-        print(f"{label}为空。")
+        from output import empty_state
+        empty_state("🧥", f"{label}为空")
         return
 
-    label = "购物清单" if args.wishlist else "衣柜"
-    print(f"\n{'='*60}")
-    print(f"  {label} ({len(items)} 件)")
-    print(f"{'='*60}")
+    try:
+        from output import console, color_dot
+        from rich.text import Text
+        from rich.table import Table
+        from rich import box
 
-    for item in items:
-        colors = item.get("colors", {})
-        color = colors.get("primary", "") if isinstance(colors, dict) else ""
-        season_str = ",".join(item.get("season", [])) if item.get("season") else ""
-        fav = "★" if item.get("favorite") else ""
-
-        print(f"  {item.get('id',''):<12} {item.get('type','')}/{item.get('sub_type',''):<10} "
-              f"{color:<6} [{season_str}] 穿:{item.get('wear_count',0)} {fav}")
-    print()
+        t = Table(box=box.SIMPLE_HEAD, border_style="#e6dfd8",
+                  title=f"{label} · {len(items)} 件", title_style="bold #cc785c")
+        t.add_column("", width=2)
+        t.add_column("ID", style="dim")
+        t.add_column("类型")
+        t.add_column("名称", style="bold")
+        t.add_column("颜色")
+        t.add_column("季节", style="dim")
+        t.add_column("穿着", justify="right")
+        for item in items:
+            colors = item.get("colors", {})
+            color_hex = colors.get("primary_hex", "") if isinstance(colors, dict) else ""
+            color_name = colors.get("primary", "") if isinstance(colors, dict) else ""
+            season_str = " · ".join(item.get("season", [])) if item.get("season") else "-"
+            fav = Text("★", style="bold #d4a017") if item.get("favorite") else Text("")
+            t.add_row(
+                fav,
+                item.get("id", ""),
+                item.get("type", ""),
+                item.get("sub_type", ""),
+                Text.assemble(color_dot(color_hex), f" {color_name}"),
+                season_str,
+                str(item.get("wear_count", 0)),
+            )
+        console.print()
+        console.print(t)
+        console.print()
+    except ImportError:
+        # fallback to plain print
+        print(f"\n  {label} ({len(items)} 件)")
+        for item in items:
+            colors = item.get("colors", {})
+            color = colors.get("primary", "") if isinstance(colors, dict) else ""
+            season_str = ",".join(item.get("season", [])) if item.get("season") else ""
+            fav = "★" if item.get("favorite") else ""
+            print(f"  {item.get('id',''):<12} {item.get('type','')}/{item.get('sub_type',''):<10} "
+                  f"{color:<6} [{season_str}] 穿:{item.get('wear_count',0)} {fav}")
 
 
 def cmd_show(args):
@@ -180,8 +211,48 @@ def cmd_show(args):
         data = {k: v for k, v in item.items() if not k.startswith("_")}
         print(json.dumps(data, ensure_ascii=False, indent=2))
     else:
-        data = {k: v for k, v in item.items() if not k.startswith("_")}
-        print(yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False))
+        try:
+            from output import console, color_dot
+            from rich.panel import Panel
+            from rich.text import Text
+            from rich.table import Table as RichTable
+            from rich import box
+
+            colors = item.get("colors", {})
+            color_hex = colors.get("primary_hex", "") if isinstance(colors, dict) else ""
+            color_name = colors.get("primary", "") if isinstance(colors, dict) else ""
+
+            rows = [
+                ("ID", item.get("id", "")),
+                ("类型", f"{item.get('type', '')} / {item.get('sub_type', '')}"),
+                ("颜色", Text.assemble(color_dot(color_hex), f" {color_name}")),
+                ("材质", item.get("material", "-")),
+                ("版型", item.get("fit", "-")),
+                ("风格", " · ".join(item.get("style", [])) or "-"),
+                ("季节", " · ".join(item.get("season", [])) or "-"),
+                ("温度", f"{item.get('temperature_range', '-')}°C"),
+                ("场合", " · ".join(item.get("occasion", [])) or "-"),
+                ("穿着", f"{item.get('wear_count', 0)} 次"),
+                ("最后穿着", item.get("last_worn", "从未")),
+                ("收藏", "★ 是" if item.get("favorite") else "否"),
+            ]
+            if item.get("brand"):
+                rows.append(("品牌", item["brand"]))
+            if item.get("price"):
+                rows.append(("价格", f"¥{item['price']}"))
+
+            title = f"{item.get('sub_type', item.get('type', ''))}"
+            t = RichTable(box=None, show_header=False, padding=(0, 2))
+            t.add_column(style="dim", min_width=10)
+            t.add_column()
+            for label, value in rows:
+                t.add_row(label, str(value))
+            console.print()
+            console.print(Panel(t, title=title, border_style="#cc785c", box=box.ROUNDED, expand=False))
+            console.print()
+        except ImportError:
+            data = {k: v for k, v in item.items() if not k.startswith("_")}
+            print(yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False))
 
 
 def cmd_update(args):

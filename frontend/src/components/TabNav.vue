@@ -8,7 +8,6 @@ defineEmits(['update:activeTab'])
 const tabs = [
   { key: 'wardrobe', label: '衣橱' },
   { key: 'wishlist', label: '购物清单' },
-  { key: 'recommend', label: '推荐' },
   { key: 'palettes', label: '色卡库' },
   { key: 'refs', label: '知识库' },
   { key: 'profile', label: '画像' }

@@ -1,10 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useWardrobe } from './composables/useWardrobe'
-import { useWishlist } from './composables/useWishlist'
-import { useProfile } from './composables/useProfile'
-import { usePalettes } from './composables/usePalettes'
-import { useRefs } from './composables/useRefs'
+import { useWardrobeStore } from './stores/wardrobe'
+import { useWishlistStore } from './stores/wishlist'
+import { useProfileStore } from './stores/profile'
+import { usePalettesStore } from './stores/palettes'
+import { useRefsStore } from './stores/refs'
 import AppHeader from './components/AppHeader.vue'
 import TabNav from './components/TabNav.vue'
 import WardrobeView from './views/WardrobeView.vue'
@@ -12,84 +12,43 @@ import WishlistView from './views/WishlistView.vue'
 import PalettesView from './views/PalettesView.vue'
 import RefsView from './views/RefsView.vue'
 import ProfileView from './views/ProfileView.vue'
-import RecommendView from './views/RecommendView.vue'
 
 const activeTab = ref('wardrobe')
 
-const { items, stats, loading: wardrobeLoading, load: loadWardrobe, getImgUrl, getColor, getTypes, getStyles, filterItems, update: updateWardrobeItem, recordWear, markWash } = useWardrobe()
-const { items: wishlistItems, loading: wishlistLoading, load: loadWishlist, getImgUrl: getWishlistImgUrl, getColor: getWishlistColor, getTypes: getWishlistTypes, getStyles: getWishlistStyles, filterItems: filterWishlistItems, moveToWardrobe, remove: removeWishlistItem } = useWishlist()
-const { profile, load: loadProfile, update: updateProfile } = useProfile()
-const { palettes, load: loadPalettes } = usePalettes()
-const { refs, load: loadRefs, update: updateRef, remove: removeRef } = useRefs()
+const wardrobe = useWardrobeStore()
+const wishlist = useWishlistStore()
+const profileStore = useProfileStore()
+const palettesStore = usePalettesStore()
+const refsStore = useRefsStore()
 
 const computedStats = computed(() => ({
-  total: items.value.length,
-  types: getTypes().length,
-  palettes: palettes.value.length,
-  refs: refs.value.length,
-  favorites: items.value.filter(i => i.favorite).length,
-  wishlist: wishlistItems.value.length
+  total: wardrobe.total,
+  types: wardrobe.types.length,
+  palettes: palettesStore.palettes.length,
+  refs: refsStore.refs.length,
+  favorites: wardrobe.favorites,
+  wishlist: wishlist.total
 }))
-
-async function loadAll() {
-  await Promise.all([
-    loadWardrobe(),
-    loadWishlist(),
-    loadProfile(),
-    loadPalettes(),
-    loadRefs()
-  ])
-}
-
-function handleDeleteRef(filename) {
-  removeRef(filename)
-}
-
-function handleSaveRef(filename, content) {
-  updateRef(filename, content)
-}
-
-function handleUpdateItem(itemData) {
-  updateWardrobeItem(itemData.id, itemData)
-}
-
-function handleSaveProfile(data) {
-  updateProfile(data)
-}
-
-function handleRefreshWardrobe() {
-  loadWardrobe()
-}
 
 function applyTheme(theme) {
   const root = document.documentElement.style
-  
-  // 核心 4 色
   root.setProperty('--user-accent', theme.accent)
   root.setProperty('--canvas', theme.canvas)
   root.setProperty('--dark', theme.dark)
   root.setProperty('--user-muted', theme.muted)
-  
-  // 派生：深色系（基于 dark）
   root.setProperty('--surface-dark', theme.dark)
   root.setProperty('--surface-dark-elevated', theme.darkElevated)
   root.setProperty('--surface-dark-soft', theme.darkSoft)
-  
-  // 派生：浅色系（基于 canvas）
   root.setProperty('--surface-soft', theme.surfaceSoft)
   root.setProperty('--surface-card', theme.surface)
   root.setProperty('--surface-cream-strong', theme.creamStrong)
   root.setProperty('--hairline', theme.hairline)
   root.setProperty('--hairline-soft', theme.hairlineSoft)
-  
-  // 派生：文字色（确保对比度）
   root.setProperty('--ink', theme.ink)
   root.setProperty('--body', theme.body)
   root.setProperty('--body-strong', theme.bodyStrong)
   root.setProperty('--muted', theme.muted)
   root.setProperty('--muted-soft', theme.mutedSoft)
-  
-  // 派生：交互色
   root.setProperty('--primary', theme.accent)
   root.setProperty('--primary-active', theme.accentActive)
   root.setProperty('--primary-disabled', theme.accentDisabled)
@@ -98,66 +57,26 @@ function applyTheme(theme) {
   root.setProperty('--on-dark-soft', theme.onDarkSoft)
 }
 
-onMounted(loadAll)
+onMounted(() => {
+  wardrobe.load()
+  wishlist.load()
+  profileStore.load()
+  palettesStore.load()
+  refsStore.load()
+})
 </script>
 
 <template>
-  <AppHeader :profile="profile" :stats="computedStats" />
-  
+  <AppHeader :profile="profileStore.profile" :stats="computedStats" />
+
   <div class="container">
     <TabNav v-model:activeTab="activeTab" />
-    
-    <WardrobeView
-      v-show="activeTab === 'wardrobe'"
-      :items="items"
-      :getImgUrl="getImgUrl"
-      :getColor="getColor"
-      :getTypes="getTypes"
-      :getStyles="getStyles"
-      :filterItems="filterItems"
-      :updateItem="handleUpdateItem"
-      :recordWear="recordWear"
-      :markWash="markWash"
-    />
 
-    <WishlistView
-      v-show="activeTab === 'wishlist'"
-      :items="wishlistItems"
-      :getImgUrl="getWishlistImgUrl"
-      :getColor="getWishlistColor"
-      :getTypes="getWishlistTypes"
-      :getStyles="getWishlistStyles"
-      :filterItems="filterWishlistItems"
-      :moveToWardrobe="moveToWardrobe"
-      :removeItem="removeWishlistItem"
-      @refreshWardrobe="handleRefreshWardrobe"
-    />
-
-    <RecommendView
-      v-show="activeTab === 'recommend'"
-      :profile="profile"
-      :items="items"
-      :getImgUrl="getImgUrl"
-    />
-    
-    <PalettesView
-      v-show="activeTab === 'palettes'"
-      :palettes="palettes"
-      @applyTheme="applyTheme"
-    />
-    
-    <RefsView
-      v-show="activeTab === 'refs'"
-      :refs="refs"
-      @delete="handleDeleteRef"
-      @save="handleSaveRef"
-    />
-    
-    <ProfileView
-      v-show="activeTab === 'profile'"
-      :profile="profile"
-      @save="handleSaveProfile"
-    />
+    <WardrobeView v-if="activeTab === 'wardrobe'" />
+    <WishlistView v-if="activeTab === 'wishlist'" />
+    <PalettesView v-if="activeTab === 'palettes'" @applyTheme="applyTheme" />
+    <RefsView v-if="activeTab === 'refs'" />
+    <ProfileView v-if="activeTab === 'profile'" />
   </div>
 </template>
 
@@ -644,20 +563,6 @@ a:hover { text-decoration: underline; }
   font-weight: 500;
   color: var(--ink);
   margin-top: var(--space-xxs);
-}
-
-/* ===== Recommend ===== */
-.recommend-card {
-  background: var(--canvas);
-  border: 1px solid var(--hairline-soft);
-  border-radius: var(--radius-lg);
-  padding: var(--space-xl);
-  margin-bottom: var(--space-lg);
-}
-
-.recommend-card h2 {
-  font-size: 28px;
-  margin-bottom: var(--space-sm);
 }
 
 /* ===== Palettes ===== */
