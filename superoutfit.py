@@ -25,6 +25,12 @@ import os
 import json
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).parent / "scripts"
+if str(Path(__file__).parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent))
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
 # rich (Claude-style output)
 try:
     from scripts.output import console, header, info_table, success, error, warn, info, kv_pairs
@@ -32,18 +38,20 @@ except ImportError:
     try:
         from output import console, header, info_table, success, error, warn, info, kv_pairs
     except ImportError:
-        from rich.console import Console
-        console = Console()
+        try:
+            from rich.console import Console
+            console = Console()
+        except ImportError:
+            class _Console:
+                def print(self, *a, **kw): print(*[str(x) for x in a])
+            console = _Console()
         def header(t, s=None): print(f"\n  {t}\n  {s or ''}")
         def info_table(r, title=None): [print(f"  {k}: {v}") for k, v in r]
-        def success(m): print(f"  ✓ {m}")
-        def error(m): print(f"  ✗ {m}")
-        def warn(m): print(f"  ! {m}")
-        def info(m): print(f"  · {m}")
+        def success(m): print(f"  [OK] {m}")
+        def error(m): print(f"  [ERR] {m}")
+        def warn(m): print(f"  [!] {m}")
+        def info(m): print(f"  - {m}")
         def kv_pairs(p): [print(f"  {k}: {v}") for k, v in p]
-
-SCRIPT_DIR = Path(__file__).parent / "scripts"
-sys.path.insert(0, str(SCRIPT_DIR))
 
 
 # ==================== AI Commands ====================
@@ -342,6 +350,35 @@ def cmd_update(args):
             print()
             for line in diff.stdout.strip().split("\n"):
                 print(f"  {line}")
+
+    # 安装 Python 依赖
+    print("检查 Python 依赖...")
+    try:
+        # 优先用 uv sync
+        uv_result = subprocess.run(["uv", "sync"], cwd=str(install_dir),
+                                   capture_output=True, text=True, shell=True)
+        if uv_result.returncode == 0:
+            print("Python 依赖已同步 (uv)")
+        else:
+            # 回退到 pip
+            pip_result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
+                cwd=str(install_dir), capture_output=True, text=True, shell=True
+            )
+            if pip_result.returncode == 0:
+                print("Python 依赖已安装 (pip)")
+            else:
+                print("Python 依赖安装失败，请手动运行: pip install -e .")
+    except FileNotFoundError:
+        # uv 不存在，用 pip
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
+                cwd=str(install_dir), capture_output=True, text=True, shell=True
+            )
+            print("Python 依赖已安装 (pip)")
+        except Exception:
+            print("Python 依赖安装失败，请手动运行: pip install -e .")
 
     # 重新构建前端
     frontend_dir = install_dir / "frontend"
