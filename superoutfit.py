@@ -354,32 +354,49 @@ def cmd_update(args):
 
     # 安装 Python 依赖
     print("检查 Python 依赖...")
-    try:
-        # 优先用 uv sync
-        uv_result = subprocess.run(["uv", "sync"], cwd=str(install_dir),
-                                   capture_output=True, encoding="utf-8", errors="replace", shell=True)
-        if uv_result.returncode == 0:
-            print("Python 依赖已同步 (uv)")
-        else:
-            # 回退到 pip
-            pip_result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
-                cwd=str(install_dir), capture_output=True, encoding="utf-8", errors="replace", shell=True
-            )
-            if pip_result.returncode == 0:
-                print("Python 依赖已安装 (pip)")
-            else:
-                print("Python 依赖安装失败，请手动运行: pip install -e .")
-    except FileNotFoundError:
-        # uv 不存在，用 pip
+    dep_ok = False
+
+    # 方法 1: uv sync
+    if not dep_ok:
         try:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
-                cwd=str(install_dir), capture_output=True, encoding="utf-8", errors="replace", shell=True
+            r = subprocess.run(["uv", "sync"], cwd=str(install_dir),
+                               encoding="utf-8", errors="replace", shell=True)
+            if r.returncode == 0:
+                print("Python 依赖已同步 (uv)")
+                dep_ok = True
+        except FileNotFoundError:
+            pass
+
+    # 方法 2: pip install -e .
+    if not dep_ok:
+        try:
+            r = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-e", "."],
+                cwd=str(install_dir),
+                encoding="utf-8", errors="replace", shell=True
             )
-            print("Python 依赖已安装 (pip)")
+            if r.returncode == 0:
+                print("Python 依赖已安装 (pip)")
+                dep_ok = True
         except Exception:
-            print("Python 依赖安装失败，请手动运行: pip install -e .")
+            pass
+
+    # 方法 3: pip install --no-build-isolation -e .
+    if not dep_ok:
+        try:
+            r = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--no-build-isolation", "-e", "."],
+                cwd=str(install_dir),
+                encoding="utf-8", errors="replace", shell=True
+            )
+            if r.returncode == 0:
+                print("Python 依赖已安装 (pip --no-build-isolation)")
+                dep_ok = True
+        except Exception:
+            pass
+
+    if not dep_ok:
+        print("Python 依赖自动安装失败，请手动运行: pip install -e .")
 
     # 重新构建前端
     frontend_dir = install_dir / "frontend"
