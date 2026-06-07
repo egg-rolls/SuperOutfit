@@ -15,12 +15,13 @@ SuperOutfit 穿着管理
 import argparse
 import json
 import sys
+import os
 from datetime import datetime, date
 from pathlib import Path
 
 import yaml
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", Path(__file__).resolve().parent.parent / "data"))
 ITEMS_DIR = DATA_DIR / "items"
 
 

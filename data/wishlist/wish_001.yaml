@@ -1,0 +1,27 @@
+id: wish_001
+type: 下装
+sub_type: 莱赛尔直筒牛仔裤
+colors:
+  primary: 黑色
+  primary_hex: "#1A1A1A"
+material: 莱赛尔54.7%+棉45.3%
+fit: 宽松直筒
+style:
+  - 日系休闲
+  - 基础百搭
+  - 简约通勤
+season:
+  - 春
+  - 夏
+temperature_range: "18~32"
+occasion:
+  - 日常通勤
+  - 休闲出行
+  - 校园
+brand: 棉公元
+price: 125
+image: wish_001.png
+favorite: false
+source: 淘宝
+source_url: ""
+note: "店铺：棉公元。原价148，618活动价125。已售200+。面料：莱赛尔54.7%+棉45.3%，零聚酯纤维。建议买30码（腰围78，裤长102）。"

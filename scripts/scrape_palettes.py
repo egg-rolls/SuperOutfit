@@ -5,6 +5,7 @@ Sources: Color Hunt, Colour Lovers, Colormind, LOL Colors
 """
 
 import json
+import os
 import time
 import re
 import urllib.request
@@ -12,7 +13,7 @@ import urllib.parse
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = SKILL_DIR / "data"
+DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", SKILL_DIR / "data"))
 RAW_PALETTES = DATA_DIR / "raw_palettes.json"
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
