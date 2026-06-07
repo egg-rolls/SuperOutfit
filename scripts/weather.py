@@ -10,6 +10,7 @@ SuperOutfit 天气查询工具
 import argparse
 import json
 import sys
+import time
 import urllib.request
 import urllib.parse
 from datetime import datetime, date
@@ -109,10 +110,21 @@ def get_clothing_advice(temp):
     else:
         return "尽可能轻薄、注意防暑降温"
 
+# 天气缓存（30分钟 TTL）
+_weather_cache = {}  # key: (city, date) -> (result, timestamp)
+WEATHER_CACHE_TTL = 1800  # 30 minutes
+
 def query_weather(city, target_date=None):
-    """查询天气"""
+    """查询天气（带 30 分钟缓存）"""
     if city not in CITY_COORDS:
         return {"error": f"未知城市: {city}", "available_cities": list(CITY_COORDS.keys())}
+
+    # 检查缓存
+    cache_key = (city, target_date)
+    if cache_key in _weather_cache:
+        result, ts = _weather_cache[cache_key]
+        if time.time() - ts < WEATHER_CACHE_TTL:
+            return result
     
     lat, lon = CITY_COORDS[city]
     today = date.today()
@@ -189,7 +201,10 @@ def query_weather(city, target_date=None):
             "advice": get_clothing_advice(avg_temp),
         },
     }
-    
+
+    # 写入缓存
+    _weather_cache[(city, target_date)] = (result, time.time())
+
     return result
 
 def main():

@@ -35,18 +35,26 @@ def load_config():
 
 
 def get_default_config():
-    """获取默认配置"""
+    """获取默认配置（匹配 profile.yaml 结构）"""
     return {
         "name": "用户",
         "city": "大连",
         "height": 175,
         "weight": 70,
-        "styles": ["休闲", "简约"],
-        "preferred_colors": ["黑白灰"],
+        "style": {
+            "primary": ["休闲", "简约"],
+            "secondary": [],
+            "avoid": [],
+        },
+        "colors": {
+            "love": [],
+            "neutral": ["黑白灰"],
+            "avoid": [],
+        },
         "budget": {
             "top": 200,
             "bottom": 300,
-            "outer": 500,
+            "outerwear": 500,
         },
     }
 
@@ -63,8 +71,15 @@ def get_city():
 
 
 def get_styles():
-    """获取用户风格偏好"""
-    return get_default("styles", ["休闲", "简约"])
+    """获取用户风格偏好（兼容 style_preferences / style.primary / styles）"""
+    config = load_config()
+    # 优先级：style.primary > style_preferences > styles
+    style = config.get("style", {})
+    if isinstance(style, dict) and style.get("primary"):
+        return style["primary"]
+    if config.get("style_preferences"):
+        return config["style_preferences"]
+    return config.get("styles", ["休闲", "简约"])
 
 
 def get_budget():

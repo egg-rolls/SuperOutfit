@@ -126,7 +126,7 @@ async def health():
 
 # 衣橱 CRUD
 @app.get("/api/wardrobe")
-async def wardrobe_list(category: str = None, style: str = None, season: str = None, wishlist: bool = False):
+async def wardrobe_list(category: str = None, season: str = None, wishlist: bool = False):
     wo = _get_wardrobe_ops()
     result = wo.api_list(type=category, season=season, wishlist=wishlist)
     return result["items"]
@@ -248,26 +248,43 @@ async def profile_update(req: ProfileUpdateRequest):
 # 色卡
 @app.get("/api/palettes")
 async def palettes_list(limit: int = 20):
-    with open(DATA_DIR / "scored_palettes.json", "r", encoding="utf-8") as f:
+    palettes_path = DATA_DIR / "scored_palettes.json"
+    if not palettes_path.exists():
+        return []
+    with open(palettes_path, "r", encoding="utf-8") as f:
         palettes = json.load(f)
     top = palettes[:limit]
     return [{"colors": p["colors"], "score": p.get("score", 0)} for p in top]
 
 @app.get("/api/palettes/debug")
 async def palettes_debug():
-    with open(DATA_DIR / "scored_palettes.json", "r", encoding="utf-8") as f:
+    palettes_path = DATA_DIR / "scored_palettes.json"
+    if not palettes_path.exists():
+        return {"total": 0, "first_keys": [], "first_score": None}
+    with open(palettes_path, "r", encoding="utf-8") as f:
         palettes = json.load(f)
     return {"total": len(palettes), "first_keys": list(palettes[0].keys()), "first_score": palettes[0].get("score")}
+
+# 路径穿越防护
+def _safe_ref_path(filename: str) -> Path:
+    """校验参考文档路径，防止路径穿越"""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="非法文件名")
+    fpath = (APP_DIR / "references" / filename).resolve()
+    ref_dir = (APP_DIR / "references").resolve()
+    if not str(fpath).startswith(str(ref_dir)):
+        raise HTTPException(status_code=400, detail="非法文件路径")
+    return fpath
 
 # 知识库
 @app.get("/api/references")
 async def references_list():
     ref_dir = APP_DIR / "references"
-    return [f.name for f in ref_dir.glob("*.md")]
+    return [f.name for f in sorted(ref_dir.glob("*.md"))]
 
 @app.get("/api/references/{filename}")
 async def reference_get(filename: str):
-    fpath = APP_DIR / "references" / filename
+    fpath = _safe_ref_path(filename)
     if not fpath.exists():
         raise HTTPException(status_code=404, detail="文件不存在")
     with open(fpath, "r", encoding="utf-8") as f:
@@ -275,7 +292,7 @@ async def reference_get(filename: str):
 
 @app.put("/api/references/{filename}")
 async def reference_update(filename: str, body: dict):
-    fpath = APP_DIR / "references" / filename
+    fpath = _safe_ref_path(filename)
     if not fpath.exists():
         raise HTTPException(status_code=404, detail="文件不存在")
     content = body.get("content", "")
@@ -285,7 +302,7 @@ async def reference_update(filename: str, body: dict):
 
 @app.delete("/api/references/{filename}")
 async def reference_delete(filename: str):
-    fpath = APP_DIR / "references" / filename
+    fpath = _safe_ref_path(filename)
     if not fpath.exists():
         raise HTTPException(status_code=404, detail="文件不存在")
     fpath.unlink()

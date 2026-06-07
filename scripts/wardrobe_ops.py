@@ -59,10 +59,24 @@ def load_item(item_id, target_dir):
         return item
 
 
+# 目录数据缓存
+_dir_cache = {}  # key: (dir_path, mtime) -> items
+
 def load_all(target_dir):
-    """加载目标目录下所有衣物"""
+    """加载目标目录下所有衣物（带 mtime 缓存）"""
     if not target_dir.exists():
         return []
+
+    # 计算目录 mtime 作为缓存键
+    try:
+        dir_mtime = max(f.stat().st_mtime for f in target_dir.glob("*.yaml"))
+    except (ValueError, OSError):
+        dir_mtime = 0
+
+    cache_key = (str(target_dir), dir_mtime)
+    if cache_key in _dir_cache:
+        return _dir_cache[cache_key]
+
     items = []
     for f in sorted(target_dir.glob("*.yaml")):
         try:
@@ -71,9 +85,20 @@ def load_all(target_dir):
                 if item:
                     item["_file"] = f.name
                     items.append(item)
-        except:
-            pass
+        except (yaml.YAMLError, OSError) as e:
+            print(f"警告：加载 {f.name} 失败：{e}", file=sys.stderr)
+
+    _dir_cache[cache_key] = items
     return items
+
+
+def invalidate_cache(target_dir=None):
+    """清除缓存（写入后调用）"""
+    global _dir_cache
+    if target_dir:
+        _dir_cache = {k: v for k, v in _dir_cache.items() if k[0] != str(target_dir)}
+    else:
+        _dir_cache.clear()
 
 
 def save_item(item, target_dir):
@@ -82,6 +107,7 @@ def save_item(item, target_dir):
     data = {k: v for k, v in item.items() if not k.startswith("_")}
     with open(path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    invalidate_cache(target_dir)
 
 
 # ==================== Commands ====================
@@ -372,12 +398,13 @@ def api_update(item_id, new_data, wishlist=False):
     item = load_item(item_id, target)
     if not item:
         return {"error": f"未找到 {item_id}"}
-    new_data["id"] = item["id"]
-    new_data["_file"] = item["_file"]
+    data = dict(new_data)  # 不修改调用方的 dict
+    data["id"] = item["id"]
+    data["_file"] = item["_file"]
     for key in ["wear_count", "last_worn", "wash_count", "wash_frequency", "last_washed", "wear_dates"]:
-        if key not in new_data:
-            new_data[key] = item.get(key, 0 if "count" in key else ([] if "dates" in key else ""))
-    save_item(new_data, target)
+        if key not in data:
+            data[key] = item.get(key, 0 if "count" in key else ([] if "dates" in key else ""))
+    save_item(data, target)
     return {"success": True, "id": item_id}
 
 def api_delete(item_id, wishlist=False):
@@ -386,6 +413,7 @@ def api_delete(item_id, wishlist=False):
     if not path.exists():
         return {"error": f"未找到 {item_id}"}
     path.unlink()
+    invalidate_cache(target)
     return {"success": True, "id": item_id}
 
 def api_stats(wishlist=False):

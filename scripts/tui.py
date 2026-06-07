@@ -110,11 +110,9 @@ def wardrobe_menu():
                 pass
             args = Args()
             args.type = None
-            args.color = None
-            args.brand = None
             args.season = None
-            args.sort = "id"
-            args.stats = False
+            args.wishlist = False
+            args.json = False
             wardrobe_ops.cmd_list(args)
             input("\n按 Enter 继续...")
         elif choice == 3:
@@ -127,7 +125,8 @@ def wardrobe_menu():
                     pass
                 args = Args()
                 args.item_id = item_id
-                args.format = "yaml"
+                args.wishlist = False
+                args.json = False
                 wardrobe_ops.cmd_show(args)
             input("\n按 Enter 继续...")
         elif choice == 4:
@@ -142,8 +141,13 @@ def wardrobe_menu():
                 confirm = input(f"确认删除 {item_id}？(y/n): ").strip().lower()
                 if confirm == 'y':
                     sys.path.insert(0, str(SKILL_DIR / "scripts"))
-                    from wardrobe_ops import delete_item
-                    delete_item(item_id)
+                    import wardrobe_ops
+                    class DelArgs:
+                        pass
+                    del_args = DelArgs()
+                    del_args.item_id = item_id
+                    del_args.wishlist = False
+                    wardrobe_ops.cmd_delete(del_args)
             input("\n按 Enter 继续...")
 
 
@@ -219,8 +223,8 @@ def color_menu():
             if colors_input:
                 colors = [c.strip() for c in colors_input.split(",")]
                 sys.path.insert(0, str(SKILL_DIR / "scripts"))
-                from color_math import score_color_harmony
-                score = score_color_harmony(colors)
+                from color_math import outfit_color_score
+                score = outfit_color_score(colors)
                 print(f"\n颜色和谐度：{score:.1f} 分")
             input("\n按 Enter 继续...")
         elif choice == 3:
@@ -233,12 +237,17 @@ def color_menu():
 def stats_menu():
     """衣橱统计菜单"""
     print("\n获取衣橱统计...")
-    
     sys.path.insert(0, str(SKILL_DIR / "scripts"))
-    from stats import main as stats_main
-    
-    stats_main()
-    
+    import wardrobe_ops
+    class Args:
+        pass
+    args = Args()
+    args.type = None
+    args.season = None
+    args.wishlist = False
+    args.json = False
+    # 显示衣橱列表（包含统计信息）
+    wardrobe_ops.cmd_list(args)
     input("\n按 Enter 继续...")
 
 

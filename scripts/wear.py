@@ -36,8 +36,8 @@ def load_items():
                 if item:
                     item["_file"] = f.name
                     items.append(item)
-        except:
-            pass
+        except (yaml.YAMLError, OSError) as e:
+            print(f"警告：加载 {f.name} 失败：{e}", file=sys.stderr)
     return items
 
 
@@ -65,7 +65,8 @@ def resolve_items(args):
     """解析目标衣物"""
     if args.items:
         ids = [s.strip() for s in args.items.split(",")]
-        return [load_item(i) for i in ids if load_item(i)]
+        loaded = [load_item(i) for i in ids]
+        return [item for item in loaded if item is not None]
     elif args.type:
         return [i for i in load_items() if i.get("type") == args.type]
     return []
@@ -88,7 +89,6 @@ def cmd_add(args):
     updated = []
     for item in targets:
         item_id = item.get("id", item["_file"].replace(".yaml", ""))
-        item["wear_count"] = item.get("wear_count", 0) + 1
         item["last_worn"] = wear_date
 
         wear_dates = item.get("wear_dates", [])
@@ -96,6 +96,7 @@ def cmd_add(args):
             wear_dates = []
         wear_dates.append(wear_date)
         item["wear_dates"] = wear_dates
+        item["wear_count"] = len(wear_dates)  # 从 wear_dates 派生
 
         # 自动计算 needs_wash
         wash_freq = item.get("wash_frequency", 0)

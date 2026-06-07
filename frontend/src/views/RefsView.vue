@@ -6,8 +6,10 @@ import RefModal from '../components/RefModal.vue'
 const store = useRefsStore()
 const modalRef = ref(null)
 
-function openModal(r) {
-  modalRef.value = r
+async function openModal(r) {
+  // 延迟加载内容
+  await store.loadContent(r.filename)
+  modalRef.value = store.refs.find(x => x.filename === r.filename) || r
 }
 
 function closeModal() {

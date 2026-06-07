@@ -44,12 +44,22 @@ export const useWardrobeStore = defineStore('wardrobe', () => {
 
   async function recordWear(id) {
     await api.wear.add(id)
-    await load()
+    // 局部更新，不全量 reload
+    const idx = items.value.findIndex(i => i.id === id)
+    if (idx >= 0) {
+      items.value[idx].wear_count = (items.value[idx].wear_count || 0) + 1
+      items.value[idx].last_worn = new Date().toISOString().split('T')[0]
+      items.value[idx].needs_wash = true
+    }
   }
 
   async function markWash(id) {
     await api.wear.wash(id)
-    await load()
+    // 局部更新
+    const idx = items.value.findIndex(i => i.id === id)
+    if (idx >= 0) {
+      items.value[idx].needs_wash = false
+    }
   }
 
   function filterItems(filter) {

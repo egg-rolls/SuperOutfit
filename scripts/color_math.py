@@ -298,21 +298,39 @@ MODEL_PATH = DATA_DIR / "color_model.pkl"
 MODEL_GP_PATH = DATA_DIR / "color_model_gp.pkl"
 FEATURE_STATS = DATA_DIR / "feature_stats.json"
 
+# 模型缓存（避免每次预测都从磁盘加载）
+_model_cache = None
+_model_cache_loaded = False
+_gp_model_cache = None
+_gp_model_cache_loaded = False
+
 def _load_model():
-    """加载训练好的线性模型"""
+    """加载训练好的线性模型（带缓存）"""
+    global _model_cache, _model_cache_loaded
+    if _model_cache_loaded:
+        return _model_cache
+    _model_cache_loaded = True
     if not MODEL_PATH.exists():
+        _model_cache = None
         return None
     import pickle
     with open(MODEL_PATH, "rb") as f:
-        return pickle.load(f)
+        _model_cache = pickle.load(f)
+    return _model_cache
 
 def _load_gp_model():
-    """加载训练好的 GP 模型"""
+    """加载训练好的 GP 模型（带缓存）"""
+    global _gp_model_cache, _gp_model_cache_loaded
+    if _gp_model_cache_loaded:
+        return _gp_model_cache
+    _gp_model_cache_loaded = True
     if not MODEL_GP_PATH.exists():
+        _gp_model_cache = None
         return None
     import pickle
     with open(MODEL_GP_PATH, "rb") as f:
-        return pickle.load(f)
+        _gp_model_cache = pickle.load(f)
+    return _gp_model_cache
 
 def _extract_features(colors_with_areas):
     """从颜色列表提取特征向量 — 委托给 like_based_scoring.extract_features"""

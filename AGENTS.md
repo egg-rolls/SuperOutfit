@@ -58,7 +58,7 @@ D:\Application\SuperOutfit\
 │
 ├── scripts/                # 核心脚本 + 工具
 │   ├── wardrobe_ops.py     # 衣物 CRUD（add/list/show/edit/delete）
-│   ├── wear_ops.py         # 穿着记录（add/wash/check/report）
+│   ├── wear.py             # 穿着记录（add/wash/check/report）
 │   ├── weather.py          # 天气查询（Open-Meteo 免费 API）
 │   ├── scorer.py           # 搭配评分（6 维度，调用 color_math.py）
 │   ├── color_math.py       # 色彩协调度计算（GP 模型 + HSL + OKLab）
@@ -97,6 +97,7 @@ D:\Application\SuperOutfit\
     ├── profile.yaml        # 用户画像
     ├── wardrobe_index.yaml # 衣物索引（自动生成）
     ├── preferences.yaml    # AI 学习偏好
+    ├── wishlist/           # 心愿单 YAML
     ├── items/              # 衣物详情 YAML（正式衣橱）
     ├── wishlist/           # 心愿单 YAML（想买的衣物）
     ├── images/             # 衣物图片
@@ -128,7 +129,7 @@ D:\Application\SuperOutfit\
 │  └─ 开发模式：Vite 热重载（独立端口，API端口+1）               │
 ├─────────────────────────────────────────────────────────────┤
 │  Python Scripts (scripts/)                                  │
-│  └─ wardrobe_ops.py / wear_ops.py / weather.py / scorer.py  │
+│  └─ wardrobe_ops.py / wear.py / weather.py / scorer.py      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
