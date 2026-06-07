@@ -9,9 +9,14 @@ export const useRefsStore = defineStore('refs', () => {
   async function load() {
     loading.value = true
     try {
-      const filenames = await api.references.list().catch(() => [])
-      // 只加载文件名列表，内容延迟加载
-      refs.value = filenames.map(name => ({ filename: name, content: '' }))
+      // 后端返回 filename + excerpt（前 200 字符）
+      const data = await api.references.list().catch(() => [])
+      refs.value = data.map(r => ({
+        filename: r.filename,
+        excerpt: r.excerpt || '',
+        has_more: r.has_more || false,
+        content: '',  // 完整内容延迟加载
+      }))
     } finally {
       loading.value = false
     }
@@ -29,7 +34,12 @@ export const useRefsStore = defineStore('refs', () => {
     await api.references.update(filename, content)
     const idx = refs.value.findIndex(r => r.filename === filename)
     if (idx >= 0) {
-      refs.value[idx] = { ...refs.value[idx], content }
+      refs.value[idx] = {
+        ...refs.value[idx],
+        content,
+        excerpt: content.substring(0, 200),
+        has_more: content.length > 200,
+      }
     }
   }
 

@@ -280,7 +280,17 @@ def _safe_ref_path(filename: str) -> Path:
 @app.get("/api/references")
 async def references_list():
     ref_dir = APP_DIR / "references"
-    return [f.name for f in sorted(ref_dir.glob("*.md"))]
+    results = []
+    for f in sorted(ref_dir.glob("*.md")):
+        try:
+            with open(f, "r", encoding="utf-8") as fp:
+                content = fp.read()
+                # 只返回前 200 字符作为预览
+                excerpt = content[:200]
+                results.append({"filename": f.name, "excerpt": excerpt, "has_more": len(content) > 200})
+        except OSError:
+            results.append({"filename": f.name, "excerpt": "", "has_more": False})
+    return results
 
 @app.get("/api/references/{filename}")
 async def reference_get(filename: str):

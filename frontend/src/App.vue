@@ -334,15 +334,14 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--hairline-soft);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
-  animation: fadeIn 0.3s ease forwards;
+  contain: content;
 }
 
 .card:hover {
   border-color: var(--hairline);
   box-shadow: 0 2px 8px rgba(20, 20, 19, 0.06);
-  transform: translateY(-2px);
 }
 
 .card-img {
@@ -577,13 +576,12 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--hairline-soft);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all 0.2s ease;
-  animation: fadeIn 0.3s ease forwards;
+  transition: border-color 0.15s ease;
+  contain: content;
 }
 
 .palette-card:hover {
   border-color: var(--hairline);
-  transform: translateY(-2px);
 }
 
 .palette-swatches {
@@ -633,15 +631,14 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--hairline-soft);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
-  animation: fadeIn 0.3s ease forwards;
+  contain: content;
 }
 
 .ref-card:hover {
   border-color: var(--hairline);
   box-shadow: 0 2px 8px rgba(20, 20, 19, 0.06);
-  transform: translateY(-2px);
 }
 
 .ref-card h3 {
@@ -768,7 +765,7 @@ a:hover { text-decoration: underline; }
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   line-height: 1.4;
   white-space: nowrap;
 }

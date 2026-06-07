@@ -44,7 +44,7 @@ function getDisplayName(filename) {
       <div v-for="r in store.refs" :key="r.filename" class="ref-card" @click="openModal(r)">
         <h3>{{ getDisplayName(r.filename) }}</h3>
         <div style="margin-top:var(--space-sm);font-size:14px;color:var(--muted);line-height:1.6">
-          {{ r.content.substring(0, 100) }}{{ r.content.length > 100 ? '...' : '' }}
+          {{ r.excerpt || '点击查看详情' }}{{ r.has_more ? '...' : '' }}
         </div>
       </div>
       <div v-if="!store.refs.length" class="empty">
