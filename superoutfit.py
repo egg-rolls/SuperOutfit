@@ -306,7 +306,8 @@ def cmd_update(args):
 
     def git(*cmds):
         return subprocess.run(["git"] + list(cmds),
-                              cwd=str(install_dir), capture_output=True, text=True)
+                              cwd=str(install_dir), capture_output=True,
+                              encoding="utf-8", errors="replace")
 
     # Stash local changes
     stash_result = git("stash", "push", "-m", "auto-stash before update")
@@ -356,14 +357,14 @@ def cmd_update(args):
     try:
         # 优先用 uv sync
         uv_result = subprocess.run(["uv", "sync"], cwd=str(install_dir),
-                                   capture_output=True, text=True, shell=True)
+                                   capture_output=True, encoding="utf-8", errors="replace", shell=True)
         if uv_result.returncode == 0:
             print("Python 依赖已同步 (uv)")
         else:
             # 回退到 pip
             pip_result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
-                cwd=str(install_dir), capture_output=True, text=True, shell=True
+                cwd=str(install_dir), capture_output=True, encoding="utf-8", errors="replace", shell=True
             )
             if pip_result.returncode == 0:
                 print("Python 依赖已安装 (pip)")
@@ -374,7 +375,7 @@ def cmd_update(args):
         try:
             subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-e", ".", "--quiet"],
-                cwd=str(install_dir), capture_output=True, text=True, shell=True
+                cwd=str(install_dir), capture_output=True, encoding="utf-8", errors="replace", shell=True
             )
             print("Python 依赖已安装 (pip)")
         except Exception:
