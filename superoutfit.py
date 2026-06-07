@@ -163,6 +163,10 @@ def cmd_gateway(args):
         if data and is_process_running(data["pid"]):
             warn(f"Gateway 已在运行 (PID: {data['pid']})")
             return
+        # 确保子进程使用正确的数据目录
+        data_dir = Path(__file__).parent / "data"
+        if "SUPEROUTFIT_DATA" not in os.environ:
+            os.environ["SUPEROUTFIT_DATA"] = str(data_dir)
         class A:
             port = args.port
             no_frontend = args.no_frontend

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+import os
 from pathlib import Path
 import json
 import sys
@@ -14,7 +15,7 @@ import yaml
 
 # --- 路径 ---
 APP_DIR = Path(__file__).parent.parent
-DATA_DIR = APP_DIR / "data"
+DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", APP_DIR / "data"))
 SCRIPTS_DIR = APP_DIR / "scripts"
 
 # scripts/ 加入 sys.path，支持 from scripts.xxx import yyy
