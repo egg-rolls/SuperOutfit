@@ -1,12 +1,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useWardrobe } from './composables/useWardrobe'
+import { useWishlist } from './composables/useWishlist'
 import { useProfile } from './composables/useProfile'
 import { usePalettes } from './composables/usePalettes'
 import { useRefs } from './composables/useRefs'
 import AppHeader from './components/AppHeader.vue'
 import TabNav from './components/TabNav.vue'
 import WardrobeView from './views/WardrobeView.vue'
+import WishlistView from './views/WishlistView.vue'
 import PalettesView from './views/PalettesView.vue'
 import RefsView from './views/RefsView.vue'
 import ProfileView from './views/ProfileView.vue'
@@ -15,6 +17,7 @@ import RecommendView from './views/RecommendView.vue'
 const activeTab = ref('wardrobe')
 
 const { items, stats, loading: wardrobeLoading, load: loadWardrobe, getImgUrl, getColor, getTypes, getStyles, filterItems, update: updateWardrobeItem, recordWear, markWash } = useWardrobe()
+const { items: wishlistItems, loading: wishlistLoading, load: loadWishlist, getImgUrl: getWishlistImgUrl, getColor: getWishlistColor, getTypes: getWishlistTypes, getStyles: getWishlistStyles, filterItems: filterWishlistItems, moveToWardrobe, remove: removeWishlistItem } = useWishlist()
 const { profile, load: loadProfile, update: updateProfile } = useProfile()
 const { palettes, load: loadPalettes } = usePalettes()
 const { refs, load: loadRefs, update: updateRef, remove: removeRef } = useRefs()
@@ -24,12 +27,14 @@ const computedStats = computed(() => ({
   types: getTypes().length,
   palettes: palettes.value.length,
   refs: refs.value.length,
-  favorites: items.value.filter(i => i.favorite).length
+  favorites: items.value.filter(i => i.favorite).length,
+  wishlist: wishlistItems.value.length
 }))
 
 async function loadAll() {
   await Promise.all([
     loadWardrobe(),
+    loadWishlist(),
     loadProfile(),
     loadPalettes(),
     loadRefs()
@@ -50,6 +55,10 @@ function handleUpdateItem(itemData) {
 
 function handleSaveProfile(data) {
   updateProfile(data)
+}
+
+function handleRefreshWardrobe() {
+  loadWardrobe()
 }
 
 function applyTheme(theme) {
@@ -110,7 +119,20 @@ onMounted(loadAll)
       :recordWear="recordWear"
       :markWash="markWash"
     />
-    
+
+    <WishlistView
+      v-show="activeTab === 'wishlist'"
+      :items="wishlistItems"
+      :getImgUrl="getWishlistImgUrl"
+      :getColor="getWishlistColor"
+      :getTypes="getWishlistTypes"
+      :getStyles="getWishlistStyles"
+      :filterItems="filterWishlistItems"
+      :moveToWardrobe="moveToWardrobe"
+      :removeItem="removeWishlistItem"
+      @refreshWardrobe="handleRefreshWardrobe"
+    />
+
     <RecommendView
       v-show="activeTab === 'recommend'"
       :profile="profile"

@@ -126,13 +126,13 @@ async def health():
 
 # 衣橱 CRUD
 @app.get("/api/wardrobe")
-async def wardrobe_list(category: str = None, style: str = None, season: str = None):
+async def wardrobe_list(category: str = None, style: str = None, season: str = None, wishlist: bool = False):
     wo = _get_wardrobe_ops()
-    result = wo.api_list(type=category, season=season)
+    result = wo.api_list(type=category, season=season, wishlist=wishlist)
     return result["items"]
 
 @app.post("/api/wardrobe")
-async def wardrobe_add(req: AddItemRequest):
+async def wardrobe_add(req: AddItemRequest, wishlist: bool = False):
     wo = _get_wardrobe_ops()
     item_dict = {
         "type": req.type,
@@ -154,35 +154,35 @@ async def wardrobe_add(req: AddItemRequest):
         "image": req.image,
         "favorite": False,
     }
-    return wo.api_add(item_dict)
+    return wo.api_add(item_dict, wishlist=wishlist)
 
 @app.get("/api/wardrobe/stats")
-async def wardrobe_stats():
+async def wardrobe_stats(wishlist: bool = False):
     wo = _get_wardrobe_ops()
-    return wo.api_stats()
+    return wo.api_stats(wishlist=wishlist)
 
 @app.get("/api/wardrobe/{item_id}")
-async def wardrobe_show(item_id: str):
+async def wardrobe_show(item_id: str, wishlist: bool = False):
     wo = _get_wardrobe_ops()
-    item = wo.api_show(item_id)
+    item = wo.api_show(item_id, wishlist=wishlist)
     if not item:
         raise HTTPException(status_code=404, detail=f"未找到 {item_id}")
     return item
 
 @app.put("/api/wardrobe/{item_id}")
-async def wardrobe_update(item_id: str, req: UpdateItemRequest):
+async def wardrobe_update(item_id: str, req: UpdateItemRequest, wishlist: bool = False):
     wo = _get_wardrobe_ops()
-    item = wo.api_show(item_id)
+    item = wo.api_show(item_id, wishlist=wishlist)
     if not item:
         raise HTTPException(status_code=404, detail=f"未找到 {item_id}")
     updates = {k: v for k, v in req.model_dump().items() if v is not None}
     item.update(updates)
-    return wo.api_update(item_id, item)
+    return wo.api_update(item_id, item, wishlist=wishlist)
 
 @app.delete("/api/wardrobe/{item_id}")
-async def wardrobe_delete(item_id: str):
+async def wardrobe_delete(item_id: str, wishlist: bool = False):
     wo = _get_wardrobe_ops()
-    result = wo.api_delete(item_id)
+    result = wo.api_delete(item_id, wishlist=wishlist)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result

@@ -35,6 +35,19 @@ export const api = {
     stats: () => request('/wardrobe/stats'),
     record: (data) => request('/wardrobe/record', { method: 'POST', body: JSON.stringify(data) })
   },
+
+  // Wishlist (购物清单)
+  wishlist: {
+    list: (params = {}) => {
+      const query = new URLSearchParams({ ...params, wishlist: true }).toString()
+      return request(`/wardrobe?${query}`)
+    },
+    add: (data) => request('/wardrobe?wishlist=true', { method: 'POST', body: JSON.stringify(data) }),
+    show: (id) => request(`/wardrobe/${id}?wishlist=true`),
+    update: (id, data) => request(`/wardrobe/${id}?wishlist=true`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request(`/wardrobe/${id}?wishlist=true`, { method: 'DELETE' }),
+    stats: () => request('/wardrobe/stats?wishlist=true'),
+  },
   
   // Wear management
   wear: {

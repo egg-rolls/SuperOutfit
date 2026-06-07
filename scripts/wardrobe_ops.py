@@ -317,8 +317,8 @@ def api_delete(item_id, wishlist=False):
     path.unlink()
     return {"success": True, "id": item_id}
 
-def api_stats():
-    items = load_all(ITEMS_DIR)
+def api_stats(wishlist=False):
+    items = load_all(get_target_dir(wishlist))
     from collections import Counter
     type_counts = Counter(i.get("type", "未知") for i in items)
     season_counts = Counter(s for i in items for s in (i.get("season") or []))

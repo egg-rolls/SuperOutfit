@@ -15,6 +15,7 @@ defineProps({
     </div>
     <div class="stats-bar">
       <div class="stat"><div class="stat-value">{{ stats.total || 0 }}</div><div class="stat-label">衣物</div></div>
+      <div class="stat"><div class="stat-value">{{ stats.wishlist || 0 }}</div><div class="stat-label">清单</div></div>
       <div class="stat"><div class="stat-value">{{ stats.types || 0 }}</div><div class="stat-label">类别</div></div>
       <div class="stat"><div class="stat-value">{{ stats.palettes || 0 }}</div><div class="stat-label">色卡</div></div>
       <div class="stat"><div class="stat-value">{{ stats.refs || 0 }}</div><div class="stat-label">知识</div></div>
