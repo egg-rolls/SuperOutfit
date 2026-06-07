@@ -321,6 +321,8 @@ def cmd_update(args):
 
     # Pull
     result = git("pull", "origin", "master")
+    if result.stdout.strip():
+        print(result.stdout.strip())
     if result.returncode != 0:
         print(f"更新失败: {result.stderr}")
         if has_stash:
@@ -337,7 +339,7 @@ def cmd_update(args):
     new_head = git("rev-parse", "HEAD").stdout.strip()
 
     if old_head == new_head:
-        print("已是最新")
+        print(f"已是最新 ({old_head[:7]})")
     else:
         print("代码已更新\n")
         # 显示新 commit 列表
