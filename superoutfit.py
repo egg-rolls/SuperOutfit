@@ -309,8 +309,8 @@ def cmd_update(args):
                               cwd=str(install_dir), capture_output=True,
                               encoding="utf-8", errors="replace")
 
-    # Stash local changes
-    stash_result = git("stash", "push", "-m", "auto-stash before update")
+    # Stash local changes (include untracked files like uv.lock)
+    stash_result = git("stash", "push", "--include-untracked", "-m", "auto-stash before update")
     has_stash = "No local changes" not in stash_result.stdout
 
     # Clean untracked files that would block merge
@@ -323,11 +323,19 @@ def cmd_update(args):
     result = git("pull", "origin", "master")
     if result.stdout.strip():
         print(result.stdout.strip())
+
+    # Pull 失败时，尝试 reset 到远程版本
     if result.returncode != 0:
-        print(f"更新失败: {result.stderr}")
-        if has_stash:
-            git("stash", "pop")
-        return
+        print(f"Pull 失败，尝试重置到远程版本...")
+        git("fetch", "origin", "master")
+        reset = git("reset", "--hard", "origin/master")
+        if reset.returncode == 0:
+            print("已重置到远程最新版本")
+        else:
+            print(f"更新失败: {reset.stderr}")
+            if has_stash:
+                git("stash", "pop")
+            return
 
     # Try to restore stashed changes
     if has_stash:
@@ -346,12 +354,6 @@ def cmd_update(args):
         log = git("log", f"{old_head}..{new_head}", "--oneline", "--no-merges")
         if log.stdout.strip():
             for line in log.stdout.strip().split("\n"):
-                print(f"  {line}")
-        # 显示变更文件统计
-        diff = git("diff", "--stat", f"{old_head}..{new_head}")
-        if diff.stdout.strip():
-            print()
-            for line in diff.stdout.strip().split("\n"):
                 print(f"  {line}")
 
     # 安装 Python 依赖
