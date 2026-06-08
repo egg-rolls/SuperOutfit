@@ -12,8 +12,9 @@ import os
 import yaml
 from pathlib import Path
 
+from paths import get_data_dir
 SKILL_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", SKILL_DIR / "data"))
+DATA_DIR = get_data_dir()
 
 
 def load_config():

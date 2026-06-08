@@ -128,7 +128,22 @@ def cmd_weather(args):
 
 
 def cmd_data(args):
-    """数据导入导出"""
+    """数据管理"""
+    if args.data_action == "dir":
+        # 显示或设置数据目录
+        from paths import get_data_dir, set_data_dir
+        if args.path:
+            ok, msg = set_data_dir(args.path)
+            if ok:
+                success(f"数据目录已设置: {msg}")
+            else:
+                error(msg)
+        else:
+            current = get_data_dir()
+            info(f"当前数据目录: {current}")
+            info(f"配置文件: {Path.home() / '.superoutfit' / 'config.json'}")
+        return
+
     from data_manager import export_data, import_data
     if args.data_action == "export":
         export_data(args.output)
@@ -141,16 +156,17 @@ def cmd_data(args):
 
 def cmd_info(args):
     """系统信息"""
-    from pathlib import Path as P
-    items_dir = P("data/items")
-    wishlist_dir = P("data/wishlist")
+    from paths import get_data_dir
+    data_dir = get_data_dir()
+    items_dir = data_dir / "items"
+    wishlist_dir = data_dir / "wishlist"
     item_count = len(list(items_dir.glob("*.yaml"))) if items_dir.exists() else 0
     wish_count = len(list(wishlist_dir.glob("*.yaml"))) if wishlist_dir.exists() else 0
     info_table([
         ("版本", "v3.2.1"),
         ("衣柜", f"{item_count} 件"),
         ("购物清单", f"{wish_count} 件"),
-        ("数据目录", str(P("data").resolve())),
+        ("数据目录", str(data_dir)),
     ], title="SuperOutfit")
 
 
@@ -163,10 +179,6 @@ def cmd_gateway(args):
         if data and is_process_running(data["pid"]):
             warn(f"Gateway 已在运行 (PID: {data['pid']})")
             return
-        # 确保子进程使用正确的数据目录
-        data_dir = Path(__file__).parent / "data"
-        if "SUPEROUTFIT_DATA" not in os.environ:
-            os.environ["SUPEROUTFIT_DATA"] = str(data_dir)
         class A:
             port = args.port
             no_frontend = args.no_frontend
@@ -529,8 +541,9 @@ def main():
     p_wt.set_defaults(func=cmd_weather)
 
     # === data ===
-    p_data = subparsers.add_parser("data", help="数据导入导出")
-    p_data.add_argument("data_action", choices=["export", "import"])
+    p_data = subparsers.add_parser("data", help="数据管理（导入/导出/设置目录）")
+    p_data.add_argument("data_action", choices=["export", "import", "dir"])
+    p_data.add_argument("path", nargs="?", help="数据目录路径（dir 操作）")
     p_data.add_argument("--output", "-o")
     p_data.add_argument("--file", "-f")
     p_data.add_argument("--merge", action="store_true")

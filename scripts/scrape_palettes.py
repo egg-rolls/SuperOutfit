@@ -12,8 +12,9 @@ import urllib.request
 import urllib.parse
 from pathlib import Path
 
+from paths import get_data_dir
 SKILL_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", SKILL_DIR / "data"))
+DATA_DIR = get_data_dir()
 RAW_PALETTES = DATA_DIR / "raw_palettes.json"
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}

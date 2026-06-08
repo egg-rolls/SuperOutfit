@@ -21,7 +21,8 @@ from pathlib import Path
 
 import yaml
 
-DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", Path(__file__).resolve().parent.parent / "data"))
+from paths import get_data_dir
+DATA_DIR = get_data_dir()
 ITEMS_DIR = DATA_DIR / "items"
 WISHLIST_DIR = DATA_DIR / "wishlist"
 

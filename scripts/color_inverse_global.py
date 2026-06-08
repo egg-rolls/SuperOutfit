@@ -18,8 +18,9 @@ from pathlib import Path
 import numpy as np
 from scipy.optimize import differential_evolution
 
+from paths import get_data_dir
 SKILL_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", SKILL_DIR / "data"))
+DATA_DIR = get_data_dir()
 MODEL_PATH = DATA_DIR / "color_model_gp.pkl"
 FEATURE_STATS = DATA_DIR / "feature_stats.json"
 

@@ -15,8 +15,9 @@ import random
 import sys
 from pathlib import Path
 
+from paths import get_data_dir
 SKILL_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", SKILL_DIR / "data"))
+DATA_DIR = get_data_dir()
 RAW_PALETTES = DATA_DIR / "raw_palettes.json"
 SCORED_PALETTES = DATA_DIR / "scored_palettes.json"
 TRANSFER_MODEL = DATA_DIR / "like_transfer_model.pkl"

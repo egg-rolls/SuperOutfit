@@ -15,12 +15,16 @@ import yaml
 
 # --- 路径 ---
 APP_DIR = Path(__file__).parent.parent
-DATA_DIR = Path(os.environ.get("SUPEROUTFIT_DATA", APP_DIR / "data"))
 SCRIPTS_DIR = APP_DIR / "scripts"
 
 # scripts/ 加入 sys.path，支持 from scripts.xxx import yyy
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from paths import get_data_dir
+DATA_DIR = get_data_dir()
 
 # --- 懒加载 scripts（避免启动时加载 GP 模型） ---
 _wo = None
