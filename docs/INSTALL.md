@@ -97,6 +97,10 @@ spof wear report
 spof color score --colors '#F5F0E8,#111111'
 spof color inverse --known '#F5F0E8' --target 75 --missing 1
 
+# 数据目录配置
+spof data dir                          # 查看当前数据目录
+spof data dir <path>                   # 设置数据目录
+
 # 天气 & 系统
 spof weather [--city X]
 spof info

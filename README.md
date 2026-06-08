@@ -134,8 +134,8 @@ Gateway 会自动：
 # 查看帮助
 spof --help
 
-# 添加衣物
-spof add --type "上衣" --sub-type "T恤" --primary-color "黑色"
+# 添加衣物（AI 生成 YAML 后）
+spof add --file item.yaml
 
 # 查看衣橱
 spof list
@@ -147,7 +147,7 @@ spof color score --colors "#F5F0E8,#C4A97D,#111111"
 spof weather --city "大连"
 
 # 记录穿着
-spof wear add --items item_001,item_003 --occasion "通勤"
+spof wear add --items item_001,item_003
 ```
 
 ### 方式 3：Web 界面
@@ -173,20 +173,20 @@ spof gateway --no-frontend
 
 ## 🛠️ 命令速查
 
-v3.2 采用 **6 大命令模块** 设计，所有功能通过 `spof` 统一入口调用：
+v3.3 采用 **6 大命令模块** 设计，所有功能通过 `spof` 统一入口调用：
 
 ```bash
 # === 衣橱 / 购物清单 CRUD ===
-spof add --type "上衣" --sub-type "T恤" --primary-color "黑色"
-spof add --wishlist --name "白色帆布鞋" --budget 500
-spof list [--json] [--category "上衣"] [--style "通勤"]
+spof add --file item.yaml                    # AI 生成 YAML 后添加
+spof add --file item.yaml --wishlist         # 添加到购物清单
+spof list [--json] [--type "上衣"] [--season "夏"]
 spof list --wishlist
 spof show item_001
-spof edit item_001 --wear-count 5
+spof edit item_001 --file new.yaml
 spof delete item_001
 
 # === 穿着追踪 ===
-spof wear add --items item_001,item_003 --occasion "通勤"
+spof wear add --items item_001,item_003
 spof wear wash --items item_001
 spof wear check                        # 查看哪些衣物该洗了
 spof wear report                       # 穿着频率统计
