@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.2.1-blue" alt="version">
+  <img src="https://img.shields.io/badge/version-3.3.0-blue" alt="version">
   <img src="https://img.shields.io/badge/python-3.11+-green" alt="python">
   <img src="https://img.shields.io/badge/license-MIT-orange" alt="license">
 </p>

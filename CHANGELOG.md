@@ -1,5 +1,57 @@
 # SuperOutfit 更新日志
 
+## v3.3.0 — 2026-06-07
+
+### 新增：可配置数据目录 + CLI 美化 + 性能优化
+
+**数据目录配置：**
+- `spof data dir [path]` — 查看/设置数据目录
+- 配置存储在 `~/.superoutfit/config.json`
+- 所有脚本统一使用 `paths.get_data_dir()` 解析路径
+- 优先级：配置文件 > 环境变量 > 默认路径
+
+**CLI 输出美化（Rich）：**
+- 新增 `scripts/output.py` — Claude 暖色调输出工具库
+- `spof info` — Panel + Table 展示系统信息
+- `spof list` — Rich Table 带彩色圆点
+- `spof show` — Panel 详情卡片
+- `spof wear check` — Table + urgency 颜色标记
+- `spof wear report` — Panel + Table + 条形图
+- `spof weather` — Panel 天气卡片
+- `spof color score` — Panel + 色条 + 等级徽章
+- `spof scorer` — Panel + 维度评分表
+- `spof gateway` — Rich 状态表格
+
+**前端架构升级：**
+- 迁移到 Pinia 状态管理（5 个 store）
+- 移除 naive-ui、@vicons/ionicons5、vue-router（减 ~3MB）
+- v-show → v-if 视图按需挂载
+- 图片懒加载（loading="lazy"）
+- API 层添加 GET 请求缓存（30s TTL）+ 请求去重
+- 移除 WebSocket/Ollama 聊天功能（本应用是 AI 工具，不内置 AI 调用）
+- 移除 backdrop-filter: blur（性能优化）
+- CSS transition: all → 具体属性 + contain: content
+
+**后端性能优化：**
+- GP/线性模型缓存（模块级变量，加载一次复用）
+- 衣橱数据 mtime 缓存（目录未变直接返回）
+- 天气 API 30 分钟 TTL 缓存
+- 参考文档列表返回 excerpt 预览（前 200 字符）
+- wear_count 从 wear_dates 派生（数据一致性）
+- 路径穿越防护（reference 端点）
+
+**后端可靠性：**
+- bare except: pass → 具体异常 + stderr 警告
+- api_update 不再修改调用方 dict
+- palettes_list 文件缺失时返回空列表
+- resolve_items 单次 load_item 调用
+- spof update 自动安装依赖 + pull 失败自动 reset
+
+**文档更新：**
+- 新增 MCP_SETUP.md — AI 自动配置 MCP 连接指南
+- SKILL.md 添加完整 Item YAML 规范 + 视觉分析指南
+- AGENTS.md 更新命令参考、数据目录配置、设计决策
+
 ## v3.2.1 — 2026-06-07
 
 ### 修复：Gateway 刷新瘫痪问题

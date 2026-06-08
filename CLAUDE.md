@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SuperOutfit is an AI-powered wardrobe management and outfit recommendation system (AI 智能穿搭顾问). It manages clothing items as individual YAML files, scores color coordination using a Gaussian Process model trained on 5,462 human-rated color palettes, and recommends outfits based on weather, occasion, and user preferences.
 
-**Version:** 3.2.1 | **License:** MIT | **Python:** 3.11+ | **Language:** Chinese (UI, docs, data)
+**Version:** 3.3.0 | **License:** MIT | **Python:** 3.11+ | **Language:** Chinese (UI, docs, data)
 
 ## Build & Run Commands
 

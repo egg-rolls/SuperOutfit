@@ -1,7 +1,7 @@
 ---
 name: superoutfit
 description: "AI 智能穿搭顾问：衣物管理、穿搭推荐、衣橱分析。通过 MCP 工具调用，数据以 YAML 文件存储。"
-version: 3.2.1
+version: 3.3.0
 author: Lirui
 license: MIT
 metadata:

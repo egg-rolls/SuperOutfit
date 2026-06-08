@@ -1,4 +1,4 @@
-# AGENTS.md - SuperOutfit v3.2.1 开发指南
+# AGENTS.md - SuperOutfit v3.3.0 开发指南
 
 > 本文档指导工程师（包括 AI Agent）开发和维护 SuperOutfit 项目。
 
@@ -112,7 +112,7 @@ D:\Application\SuperOutfit\
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      SuperOutfit v3.2.1                      │
+│                      SuperOutfit v3.3.0                      │
 ├─────────────────────────────────────────────────────────────┤
 │  CLI (superoutfit.py → spof)                                │
 │  └─ 统一命令入口：add/list/show/edit/delete/wear/color/...   │
@@ -480,7 +480,7 @@ GitHub 连接超时，需要配置代理（端口 7892）才能 push。
 ### 9. v3.2: --wishlist 切换目标目录
 `--wishlist` 标志将数据目录从 `data/items/` 切换到 `data/wishlist/`。两个目录结构相同，但互不干扰。
 
-### 10. v3.2.1: Gateway 子进程输出必须重定向到文件
+### 10. v3.3.0: Gateway 子进程输出必须重定向到文件
 `gateway.py` 启动子进程时**不能使用 `stdout=subprocess.PIPE`**。Windows 管道缓冲区仅 ~4KB，父进程不读取时，uvicorn 的日志输出会写满缓冲区并阻塞整个事件循环，导致服务器瘫痪。已改为写入 `.logs/{name}.log` 文件。如需查看子进程输出，读取日志文件而非 PIPE。
 
 ### 11. 设计决策：本应用不内置 AI 调用

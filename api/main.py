@@ -69,7 +69,7 @@ def _get_scorer():
     return _sc
 
 # --- FastAPI ---
-app = FastAPI(title="SuperOutfit API", version="3.2.1")
+app = FastAPI(title="SuperOutfit API", version="3.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -127,7 +127,7 @@ class ProfileUpdateRequest(BaseModel):
 # --- API 路由 ---
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "3.2.1"}
+    return {"status": "ok", "version": "3.3.0"}
 
 # 衣橱 CRUD
 @app.get("/api/wardrobe")

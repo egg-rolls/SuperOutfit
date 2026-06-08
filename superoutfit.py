@@ -163,7 +163,7 @@ def cmd_info(args):
     item_count = len(list(items_dir.glob("*.yaml"))) if items_dir.exists() else 0
     wish_count = len(list(wishlist_dir.glob("*.yaml"))) if wishlist_dir.exists() else 0
     info_table([
-        ("版本", "v3.2.1"),
+        ("版本", "v3.3.0"),
         ("衣柜", f"{item_count} 件"),
         ("购物清单", f"{wish_count} 件"),
         ("数据目录", str(data_dir)),
@@ -442,11 +442,11 @@ def show_banner():
         from rich import box
         title = Text("SPOF", style="bold #cc785c")
         subtitle = Text("AI 智能穿搭顾问", style="dim")
-        version = Text("v3.2.1", style="#5db872")
+        version = Text("v3.3.0", style="#5db872")
         content = Text.assemble("\n  ", title, "\n  ", subtitle, "\n  ", version, "\n")
         console.print(Panel(content, border_style="#cc785c", box=box.ROUNDED, expand=False))
     except Exception:
-        print("SuperOutfit v3.2.1")
+        print("SuperOutfit v3.3.0")
 
 
 # ==================== Main ====================
