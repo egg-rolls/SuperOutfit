@@ -200,6 +200,8 @@ spof weather                           # 从配置读取城市
 spof weather --city "大连"
 
 # === 数据管理 ===
+spof data dir                          # 查看当前数据目录
+spof data dir <path>                   # 设置数据目录
 spof data export                       # 导出数据
 spof data import                       # 导入数据
 
