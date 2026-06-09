@@ -451,131 +451,206 @@ def show_banner():
 
 # ==================== Main ====================
 
+def print_rich_help():
+    """打印自定义的 Rich 格式帮助信息"""
+    try:
+        from rich.table import Table
+        from rich.panel import Panel
+        from rich.text import Text
+        from rich import box
+
+        # 命令分组
+        groups = [
+            ("衣橱管理", [
+                ("add",    "添加衣物 (AI 生成 YAML)", "--file item.yaml [--wishlist]"),
+                ("list",   "列出衣物",                "[--type X] [--season X] [--json]"),
+                ("show",   "查看衣物详情",            "item_001 [--json]"),
+                ("edit",   "编辑衣物",                "item_001 --file new.yaml"),
+                ("delete", "删除衣物",                "item_001 [--wishlist]"),
+            ]),
+            ("穿着追踪", [
+                ("wear add",   "记录今天穿了什么",  "--items item_001,item_002 [--date 2026-06-07]"),
+                ("wear wash",  "标记衣物已清洗",    "--items item_001"),
+                ("wear check", "查看需要清洗的衣物", "[--type 上衣]"),
+                ("wear report","穿着统计报表",      "[--items item_001] [--json]"),
+            ]),
+            ("色彩分析", [
+                ("color score",   "色彩和谐度评分",   '--colors "#F5F0E8,#111111"'),
+                ("color inverse", "反向推导配色",     '--known "#F5F0E8" --target 75 --missing 1'),
+            ]),
+            ("数据管理", [
+                ("data dir",    "查看/设置数据目录",  "\\[/path/to/data]"),
+                ("data export", "导出数据为 zip",    "\\[-o output.zip]"),
+                ("data import", "从 zip 导入数据",   "-f backup.zip \\[--merge]"),
+            ]),
+            ("系统工具", [
+                ("weather",  "天气查询",        "[--city 大连]"),
+                ("info",     "系统信息",        ""),
+                ("gateway",  "启动/停止网关",   "[up|down|status] [--dev] [--port 32200]"),
+                ("update",   "更新 SuperOutfit",""),
+            ]),
+        ]
+
+        console.print()
+        for group_name, commands in groups:
+            table = Table(
+                box=None, show_header=True, header_style="bold #cc785c",
+                padding=(0, 2), show_edge=False,
+                title=f"  {group_name}", title_style="bold",
+            )
+            table.add_column("命令", style="bold #cc785c", min_width=16)
+            table.add_column("说明", min_width=24)
+            table.add_column("参数", style="dim")
+
+            for cmd, desc, args in commands:
+                table.add_row(f"  spof {cmd}", desc, args)
+
+            console.print(table)
+            console.print()
+
+        # 使用示例
+        examples = Text()
+        examples.append("  使用示例:\n", style="bold")
+        examples.append("  spof gateway", style="bold #cc785c")
+        examples.append("                    # 启动服务（API + 前端）\n", style="dim")
+        examples.append("  spof list", style="bold #cc785c")
+        examples.append("                       # 查看衣橱\n", style="dim")
+        examples.append("  spof add --file item.yaml", style="bold #cc785c")
+        examples.append("         # 添加衣物\n", style="dim")
+        examples.append("  spof wear check", style="bold #cc785c")
+        examples.append("                  # 查看需清洗的衣物\n", style="dim")
+        examples.append("  spof color score --colors ", style="bold #cc785c")
+        examples.append('"#F5F0E8,#111111"', style="#5db872")
+        examples.append("  # 色彩评分\n", style="dim")
+        examples.append("  spof data dir ~/my-data", style="bold #cc785c")
+        examples.append("            # 设置数据目录\n", style="dim")
+
+        console.print(Panel(examples, border_style="#e6dfd8", box=box.ROUNDED, expand=False))
+
+        # 底部提示
+        console.print()
+        console.print("  [dim]--json    所有 list/show/report 命令支持 JSON 输出[/]")
+        console.print("  [dim]--wishlist 衣橱命令切换到购物清单[/]")
+        console.print("  [dim]-h       任何子命令查看详细帮助  spof wear -h[/]")
+        console.print()
+
+    except Exception:
+        # fallback
+        print("用法: spof <命令> [参数]")
+        print("运行 spof -h 查看完整帮助")
+
+
 def main():
     show_banner()
 
     parser = argparse.ArgumentParser(
-        prog="superoutfit",
+        prog="spof",
         description="SuperOutfit AI 智能穿搭顾问",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-示例:
-  spof add --file item.yaml                    # 添加衣物
-  spof add --file item.yaml --wishlist         # 添加到购物清单
-  spof list --type 上衣 --season 夏             # 筛选
-  spof show item_001                           # 查看详情
-  spof edit item_001 --file new.yaml         # 编辑
-  spof delete item_001                         # 删除
-  spof wear add --items item_001,item_002      # 记录穿着
-  spof wear check                              # 需清洗的
-  spof wear report                             # 穿着报表
-  spof color score --colors "#F5F0E8,#111111"  # 色彩和谐度
-  spof color inverse --known "#F5F0E8" --target 75 --missing 1
-  spof weather                                 # 天气
-  spof data export                             # 导出数据
-  spof info                                    # 系统信息
-  spof gateway up                              # 启动网关
-        """,
+        add_help=False,
     )
 
-    parser.add_argument("-v", "--version", action="store_true", help="版本信息")
+    parser.add_argument("-h", "--help", action="store_true", help="显示帮助信息")
+    parser.add_argument("-v", "--version", action="store_true", help="显示版本信息")
     subparsers = parser.add_subparsers(dest="command")
 
-    # === spof (衣橱 CRUD) ===
-    p = subparsers.add_parser("add", help="添加衣物 (--wishlist=购物清单)")
+    # === 衣橱 CRUD ===
+    p = subparsers.add_parser("add", help="添加衣物", description="从 YAML 文件添加衣物到衣橱或购物清单")
     p.add_argument("--file", required=True, help="YAML 文件路径")
     p.add_argument("--wishlist", action="store_true", help="添加到购物清单")
     p.set_defaults(func=lambda a: _crud("add", a))
 
-    p = subparsers.add_parser("list", help="列出衣物")
-    p.add_argument("--type", help="按类型筛选")
-    p.add_argument("--season", help="按季节筛选")
+    p = subparsers.add_parser("list", help="列出衣物", description="列出衣橱或购物清单中的所有衣物")
+    p.add_argument("--type", help="按类型筛选 (上衣/下装/配饰)")
+    p.add_argument("--season", help="按季节筛选 (春/夏/秋/冬)")
     p.add_argument("--wishlist", action="store_true", help="列出购物清单")
-    p.add_argument("--json", action="store_true")
+    p.add_argument("--json", action="store_true", help="JSON 格式输出")
     p.set_defaults(func=lambda a: _crud("list", a))
 
-    p = subparsers.add_parser("show", help="查看衣物详情")
-    p.add_argument("item_id", help="衣物 ID")
-    p.add_argument("--wishlist", action="store_true")
-    p.add_argument("--json", action="store_true")
+    p = subparsers.add_parser("show", help="查看衣物详情", description="查看单件衣物的完整信息")
+    p.add_argument("item_id", help="衣物 ID (如 item_001)")
+    p.add_argument("--wishlist", action="store_true", help="从购物清单查看")
+    p.add_argument("--json", action="store_true", help="JSON 格式输出")
     p.set_defaults(func=lambda a: _crud("show", a))
 
-    p = subparsers.add_parser("edit", help="编辑衣物")
+    p = subparsers.add_parser("edit", help="编辑衣物", description="用新 YAML 文件覆盖更新衣物信息")
     p.add_argument("item_id", help="衣物 ID")
-    p.add_argument("--file", required=True, help="YAML 文件路径")
-    p.add_argument("--wishlist", action="store_true")
+    p.add_argument("--file", required=True, help="新的 YAML 文件路径")
+    p.add_argument("--wishlist", action="store_true", help="编辑购物清单中的衣物")
     p.set_defaults(func=lambda a: _crud("edit", a))
 
-    p = subparsers.add_parser("delete", help="删除衣物")
+    p = subparsers.add_parser("delete", help="删除衣物", description="从衣橱或购物清单删除衣物")
     p.add_argument("item_id", help="衣物 ID")
-    p.add_argument("--wishlist", action="store_true")
+    p.add_argument("--wishlist", action="store_true", help="从购物清单删除")
     p.set_defaults(func=lambda a: _crud("delete", a))
 
-    # === wear ===
-    p_wear = subparsers.add_parser("wear", help="穿着管理")
-    p_wear.add_argument("wear_action", choices=["add", "wash", "check", "report"])
-    p_wear.add_argument("--items", help="衣物 ID (逗号分隔)")
+    # === 穿着管理 ===
+    p_wear = subparsers.add_parser("wear", help="穿着管理", description="记录穿着、清洗、查看统计")
+    p_wear.add_argument("wear_action", choices=["add", "wash", "check", "report"],
+                        help="add=记录穿着 | wash=标记清洗 | check=需清洗 | report=统计报表")
+    p_wear.add_argument("--items", help="衣物 ID (逗号分隔，如 item_001,item_002)")
     p_wear.add_argument("--type", help="按类型筛选")
-    p_wear.add_argument("--date", help="日期 YYYY-MM-DD")
-    p_wear.add_argument("--json", action="store_true")
+    p_wear.add_argument("--date", help="日期 YYYY-MM-DD (默认今天)")
+    p_wear.add_argument("--json", action="store_true", help="JSON 格式输出")
     p_wear.set_defaults(func=cmd_wear)
 
-    # === color ===
-    p_color = subparsers.add_parser("color", help="色彩工具")
-    p_color.add_argument("color_action", choices=["score", "inverse"])
+    # === 色彩工具 ===
+    p_color = subparsers.add_parser("color", help="色彩分析", description="色彩和谐度评分与反向推导")
+    p_color.add_argument("color_action", choices=["score", "inverse"],
+                         help="score=评分 | inverse=反向推导")
     p_color.add_argument("--colors", help="HEX 色值 (逗号分隔)")
-    p_color.add_argument("--known", help="已知颜色 (逗号分隔 HEX)")
-    p_color.add_argument("--target", type=float, help="目标分数")
-    p_color.add_argument("--missing", type=int, help="补全数量")
+    p_color.add_argument("--known", help="已知颜色 HEX (逗号分隔)")
+    p_color.add_argument("--target", type=float, help="目标分数 (0-100)")
+    p_color.add_argument("--missing", type=int, help="需要补全的颜色数量")
     p_color.add_argument("--method", choices=["search", "global"], default="search")
     p_color.add_argument("--top", type=int, default=5)
     p_color.add_argument("--samples", type=int, default=3)
     p_color.add_argument("--maxiter", type=int, default=100)
     p_color.set_defaults(func=cmd_color)
 
-    # === weather ===
-    p_wt = subparsers.add_parser("weather", help="天气查询")
-    p_wt.add_argument("--city", default="大连")
-    p_wt.add_argument("--lat", type=float)
-    p_wt.add_argument("--lon", type=float)
+    # === 天气 ===
+    p_wt = subparsers.add_parser("weather", help="天气查询", description="查询天气信息 (Open-Meteo API)")
+    p_wt.add_argument("--city", default="大连", help="城市名称 (默认: 大连)")
+    p_wt.add_argument("--lat", type=float, help="纬度")
+    p_wt.add_argument("--lon", type=float, help="经度")
     p_wt.set_defaults(func=cmd_weather)
 
-    # === data ===
-    p_data = subparsers.add_parser("data", help="数据管理（导入/导出/设置目录）")
-    p_data.add_argument("data_action", choices=["export", "import", "dir"])
-    p_data.add_argument("path", nargs="?", help="数据目录路径（dir 操作）")
-    p_data.add_argument("--output", "-o")
-    p_data.add_argument("--file", "-f")
-    p_data.add_argument("--merge", action="store_true")
-    p_data.add_argument("--force", action="store_true")
+    # === 数据管理 ===
+    p_data = subparsers.add_parser("data", help="数据管理", description="数据目录配置、导入导出")
+    p_data.add_argument("data_action", choices=["export", "import", "dir"],
+                        help="dir=设置目录 | export=导出 | import=导入")
+    p_data.add_argument("path", nargs="?", help="数据目录路径 (dir 操作)")
+    p_data.add_argument("--output", "-o", help="导出文件路径")
+    p_data.add_argument("--file", "-f", help="导入文件路径")
+    p_data.add_argument("--merge", action="store_true", help="合并导入 (不覆盖)")
+    p_data.add_argument("--force", action="store_true", help="强制导入 (覆盖)")
     p_data.set_defaults(func=cmd_data)
 
-    # === info ===
-    p_info = subparsers.add_parser("info", help="系统信息")
+    # === 系统 ===
+    p_info = subparsers.add_parser("info", help="系统信息", description="显示版本、数据目录、衣物统计")
     p_info.set_defaults(func=cmd_info)
 
-    # === gateway ===
-    p_gw = subparsers.add_parser("gateway", aliases=["gw"], help="网关管理")
+    p_gw = subparsers.add_parser("gateway", aliases=["gw"], help="网关管理",
+                                 description="启动/停止 API + 前端 + MCP 服务")
     p_gw.add_argument("gw_action", nargs="?", default="up",
-                      choices=["up", "down", "status"])
-    p_gw.add_argument("--port", type=int, default=32200, help="端口 (默认: 32200, API+前端同端口)")
+                      choices=["up", "down", "status"],
+                      help="up=启动 | down=停止 | status=状态 (默认: up)")
+    p_gw.add_argument("--port", type=int, default=32200, help="API 端口 (默认: 32200)")
     p_gw.add_argument("--no-frontend", action="store_true", help="不启动前端")
-    p_gw.add_argument("--no-mcp", action="store_true", help="不启动 MCP")
-    p_gw.add_argument("--dev", action="store_true", help="开发模式（前端热重载）")
+    p_gw.add_argument("--no-mcp", action="store_true", help="不启动 MCP Server")
+    p_gw.add_argument("--dev", action="store_true", help="开发模式 (前端热重载)")
     p_gw.set_defaults(func=cmd_gateway)
 
-    # === infra ===
-    p = subparsers.add_parser("tui", help="交互式 TUI")
+    p = subparsers.add_parser("tui", help="交互模式", description="菜单式交互界面")
     p.set_defaults(func=cmd_tui)
 
-    p = subparsers.add_parser("init", help="首次使用引导")
-    p.add_argument("--quick", action="store_true")
+    p = subparsers.add_parser("init", help="初始化", description="首次使用引导配置")
+    p.add_argument("--quick", action="store_true", help="快速模式 (使用默认值)")
     p.set_defaults(func=cmd_init)
 
-    p = subparsers.add_parser("update", help="更新 SuperOutfit")
+    p = subparsers.add_parser("update", help="更新", description="从 GitHub 拉取最新代码并安装依赖")
     p.set_defaults(func=cmd_update)
 
-    p = subparsers.add_parser("uninstall", help="卸载 SuperOutfit")
+    p = subparsers.add_parser("uninstall", help="卸载", description="卸载 SuperOutfit")
     p.add_argument("--keep-data", action="store_true", help="保留衣橱数据")
     p.add_argument("-y", "--yes", action="store_true", help="跳过确认")
     p.set_defaults(func=cmd_uninstall)
@@ -583,11 +658,11 @@ def main():
     args = parser.parse_args()
 
     if args.version:
-        print("SuperOutfit v3.2.0")
+        print("SuperOutfit v3.3.0")
         return
 
-    if not args.command:
-        parser.print_help()
+    if args.help or not args.command:
+        print_rich_help()
         return
 
     args.func(args)
